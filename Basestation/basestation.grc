@@ -42,7 +42,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [184, 88.0]
+    coordinate: [408, 36.0]
     rotation: 0
     state: enabled
 - name: samp_rate
@@ -54,7 +54,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [184, 12]
+    coordinate: [256, 36.0]
     rotation: 0
     state: enabled
 - name: lora_rx_0
@@ -79,7 +79,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [440, 256.0]
+    coordinate: [592, 352.0]
     rotation: 0
     state: true
 - name: qtgui_time_sink_x_0
@@ -176,7 +176,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [440, 16.0]
+    coordinate: [584, 44.0]
     rotation: 0
     state: true
 - name: qtgui_waterfall_sink_x_0
@@ -237,7 +237,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [440, 136.0]
+    coordinate: [592, 208.0]
     rotation: 0
     state: true
 - name: uhd_usrp_source_0
@@ -684,4 +684,4 @@ connections:
 
 metadata:
   file_format: 1
-  grc_version: 3.10.7.0
+  grc_version: 3.10.9.2
