@@ -1,62 +1,37 @@
-// Feather9x_TX
-// -*- mode: C++ -*-
-// Example sketch showing how to create a simple messaging client (transmitter)
-// with the RH_RF95 class. RH_RF95 class does not provide for addressing or
-// reliability, so you should only use RH_RF95 if you do not need the higher
-// level messaging abilities.
-// It is designed to work with the other example Feather9x_RX
-
+// includes
 #include <stdlib.h>
 #include <SPI.h>
 #include <RH_RF95.h>
 #include "TinyGPS++.h"
-
-//includes for battery and display
 #include <Wire.h>
-#include <Adafruit_GFX.h>
-#include <Adafruit_SSD1306.h>
 #include <vector>
 
+// constants
 #define RFM95_CS 8
 #define RFM95_RST 4
 #define RFM95_INT 3
-
-// Change to 434.0 or other frequency, must match RX's freq!
 #define RF95_FREQ 915.0
-
 #define BEACON_ID "1"
-
-//more includes for batteries and delay
 #define VBATPIN A5
+#define panicpin A0
+#define panicpinled 16
 
+// globals
 float measuredvbat = 0;
 float highvoltage = 4.3;
 float lowvoltage = 3.25;
-//int counter = 0;
-
-Adafruit_SSD1306 myDisplay = Adafruit_SSD1306(128,64,&Wire, -1);
-
-
 int valbutton = 0;
 int valpower = 0;
-
-
 int panicstate = 0;
 int panicbounce = 0;
-
 int powerstate = 0;
 int gps_counter = 0;
-
 char panic_state[] = "0";
 char gps_lat[] = "37.227726000000";  //default lat and long values for testing
 char gps_long[] = "-80.42221600000";
 float batpercent = 100;
-
 bool inPanic = false;
 bool prevPanicState = false;
-
-#define panicpin A0
-#define panicpinled 16
 
 // Singleton instance of the radio driver
 RH_RF95 rf95(RFM95_CS, RFM95_INT);
@@ -231,43 +206,6 @@ smartDelay(100); //Spends one second filling recieve buffer
   
   batpercent = ((measuredvbat - lowvoltage) / (highvoltage - lowvoltage)) * 100;  //linear battery relationship - does not perfectly follow model of battery
   // Serial.println("batpercent: " + String(batpercent));  
-
-  //***OLED DISPLAY CODE - UNCOMMENT TO USE DISPLAY***
-  //note that uncommenting this code will slow down the time between trasnmits
-  // myDisplay.clearDisplay();
-  // myDisplay.setTextColor(WHITE);
-
-  // myDisplay.setTextSize(2);
-  // myDisplay.setCursor(0,0);
-  // myDisplay.print("Beacon #");
-  // myDisplay.print(BEACON_ID);
-
-  // myDisplay.setTextSize(1);
-  // myDisplay.setCursor(0,20);
-  // myDisplay.print("BAT:");
-  // String batstr = String(measuredvbat, 2);
-  // myDisplay.print(batstr);
-  // myDisplay.print("V|");
-
-  // myDisplay.setTextSize(2);
-  // String batpercentstr = String(batpercent, 1);
-  // myDisplay.print(batpercentstr);
-  // myDisplay.print("%");
-
-  // myDisplay.setTextSize(2);
-  // myDisplay.setCursor(0,40);
-  // myDisplay.print("Panic ");
-  // if (panicstate){
-  //   myDisplay.print("ON");
-  // }
-  // else {
-  //   myDisplay.print("OFF");
-  // }
-
-  // myDisplay.display();
-
-  // }
-  
 
   //convert gps data to an array of chars
 
