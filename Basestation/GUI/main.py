@@ -86,7 +86,7 @@ class BaseStationGUI(QtWidgets.QWidget):
             # Print any connection error to the command line
             print(f"Error: {err}. Make sure GNURadio is open", file=sys.stderr)
             sys.exit(1)
-        
+
         # Load initial map to the GUI
         self.webEngineView.setHtml(self.mapManager.loadHtml())
         # Connect htmlChanged signal to setHtml slot
