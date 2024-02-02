@@ -84,7 +84,7 @@ class BaseStationGUI(QtWidgets.QWidget):
             self.mapManager = MapManager()
         except OSError as err:
             # Print any connection error to the command line
-            print(f"Error: {err}", file=sys.stderr)
+            print(f"Error: {err}. Make sure GNURadio is open", file=sys.stderr)
             sys.exit(1)
         
         # Load initial map to the GUI
