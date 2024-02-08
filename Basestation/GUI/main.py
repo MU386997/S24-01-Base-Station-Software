@@ -141,21 +141,18 @@ class MapManager(QtCore.QObject):
 
         print(received_data)
         # First 2 bytes are radio id
-        radio_id = struct.unpack("!H", received_data[:2])[0]
         # Second byte holds the message id and panic state
-        message_byte = struct.unpack("!b", received_data[2:3])[0]
+        # Bytes 4-7 are GPS latitude
+        # Bytes 8-11 are GPS longitude
+        # Bytes 13-16 are the time in Unix time format
+        radio_id, message_byte, latitude, longitude, unix_time = struct.unpack("!HbffxI", received_data)
         # Message id is the absolute value of the message id byte
         message_id = abs(message_byte)
         # Panic state is determined by the first bit of the message id which also determines the sign
         panic_state = message_byte < 0
-        # Bytes 4-7 are GPS latitude
-        # Bytes 8-11 are GPS longitude
-        latitude, longitude = struct.unpack("!ff", received_data[3:11])
         # Byte 12 is battery life from 0 to 255
         battery_life = received_data[11] * 100 / 255
-        # Bytes 13-16 are the time in Unix time format
-        unix_time = struct.unpack("!I", received_data[12:])[0]
-        # Convert unix time to UTC
+        # Convert unix time to UTC string
         utc_time = datetime.fromtimestamp(unix_time, UTC).strftime("%m-%d-%Y %H:%M:%S")
 
         # Return a tuple with all the necessary info
