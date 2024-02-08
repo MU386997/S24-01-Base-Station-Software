@@ -139,7 +139,6 @@ class MapManager(QtCore.QObject):
                 f"Expected packet length of {expected_length} bytes. Received {packet_length} bytes"
             )
 
-        print(received_data)
         # First 2 bytes are radio id (unsigned short: H)
         # Second byte holds the message id and panic state (signed char: b)
         # Bytes 4-7 are GPS latitude (float: f)
