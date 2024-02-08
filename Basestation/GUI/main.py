@@ -113,6 +113,24 @@ class MapManager(QtCore.QObject):
         folium.Marker(location=(latitude, longitude), popup=popup).add_to(self.map)
 
     def decode(self, received_data: bytes):
+        """
+        Decodes the data packet coming from GNURadio
+
+        Packet Structure:
+         0                   1                   2                   3
+         0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 
+        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+        |                               |P|             |               |
+        |           Radio ID            |A|  Message ID |   GPS Lat     |
+        |                               |N|             |               |
+        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+        |          GPS Latitude (continued)             |   GPS Long    |
+        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+        |          GPS Longitude (continued)            | Battery Life  |
+        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+        |                           Unix Time                           |
+        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+        """
         # Expected packet length in bytes
         packet_length = 16
         # Raise exception if packet is not expected length
