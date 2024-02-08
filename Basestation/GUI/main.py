@@ -55,7 +55,7 @@ class MapManager(QtCore.QObject):
                 # Continuously recieve data from GNURadio
                 while data := self.radioSocket.recv(BUFFER_SIZE):
                     try:
-                        # Add the point to the map
+                        # Decode and add the point to the map
                         self.add_point(self.decode(data))
                         # Update the map in the GUI by emitting a signal
                         self.htmlChanged.emit(self.load_HTML())
