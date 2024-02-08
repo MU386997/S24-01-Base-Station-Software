@@ -132,19 +132,19 @@ class MapManager(QtCore.QObject):
         +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
         """
         # Expected packet length in bytes
-        packet_length = 16
+        expected_length = 16
         # Raise exception if packet is not expected length
-        if (data_length := len(received_data)) != packet_length:
+        if (packet_length := len(received_data)) != expected_length:
             raise PacketLengthError(
-                f"Expected packet length of {packet_length} bytes. Received {data_length} bytes"
+                f"Expected packet length of {expected_length} bytes. Received {packet_length} bytes"
             )
 
         print(received_data)
-        # First 2 bytes are radio id
-        # Second byte holds the message id and panic state
-        # Bytes 4-7 are GPS latitude
-        # Bytes 8-11 are GPS longitude
-        # Bytes 13-16 are the time in Unix time format
+        # First 2 bytes are radio id (unsigned short: H)
+        # Second byte holds the message id and panic state (signed char: b)
+        # Bytes 4-7 are GPS latitude (float: f)
+        # Bytes 8-11 are GPS longitude (float: f)
+        # Bytes 13-16 are the time in Unix time format (unsigned int: I)
         radio_id, message_byte, latitude, longitude, unix_time = struct.unpack("!HbffxI", received_data)
         # Message id is the absolute value of the message id byte
         message_id = abs(message_byte)
