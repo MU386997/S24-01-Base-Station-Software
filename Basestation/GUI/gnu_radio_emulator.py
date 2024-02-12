@@ -5,10 +5,30 @@ This file is meant to emulate GNU Radio for the purpose of testing
 import time
 import socket
 import struct
+import random
 
 # GNU Radio should listen on this port address
 GNURADIO_ADDR = ("localhost", 8080)
 BUFFER_SIZE = 2**12
+
+def get_random_packet():
+    # Construct an arbitrary packet
+    radio_id = random.randint(0, 65535)
+    message_id = random.randint(-128, 127)
+    latitude = random.uniform(37, 38)
+    longitude = random.uniform(-81, -80)
+    battery_life = random.randint(0, 255)
+    unix_time = int(time.time())  # Get the current Unix time
+    return struct.pack(
+        "!HbffBI",
+        radio_id,
+        message_id,
+        latitude,
+        longitude,
+        battery_life,
+        unix_time,
+    )
+
 
 if __name__ == "__main__":
     # Set up the socket
@@ -21,21 +41,7 @@ if __name__ == "__main__":
     while peer_connection := server_socket.accept():
         peer_socket, _ = peer_connection
         with peer_socket:
-            # Construct an arbitrary packet
-            radio_id = 42
-            message_id = -99
-            latitude = 37.22788
-            longitude = -80.42212
-            battery_life = 200  # Battery life is from 0 to 255
-            unix_time = int(time.time())  # Get the current Unix time
-            packet = struct.pack(
-                "!HbffBI",
-                radio_id,
-                message_id,
-                latitude,
-                longitude,
-                battery_life,
-                unix_time,
-            )
             # Send the packet once per connection
-            peer_socket.send(packet)
+            for _ in range(7):
+                time.sleep(2)
+                peer_socket.send(get_random_packet())
