@@ -111,7 +111,7 @@ class MapManager(QtCore.QObject):
             f"Time: {utc_time} UTC"
         )
         # Print packet to console
-        print(f"\nPacket Received:\n{popup_string.replace("<br>", "\n")}")
+        print("\nPacket Received:\n{}".format(popup_string.replace("<br>", "\n")))
         # Make a popup with all the packet data
         iframe = folium.IFrame(popup_string)
         popup = folium.Popup(iframe, min_width=250, max_width=250)
