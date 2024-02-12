@@ -6,266 +6,240 @@
 #include <Wire.h>
 #include <vector>
 
-// constants
+
+// pins
 #define RFM95_CS 8
 #define RFM95_RST 4
 #define RFM95_INT 3
+
+#define VBAT_PIN A5
+#define PANIC_BUTTON_PIN A0
+#define PANIC_LED_PIN 16
+#define NOISE_SEED_PIN A4 //note this pin is not connected to anything, we need the noise from the open connection
+
+
+// constants
 #define RF95_FREQ 915.0
-#define BEACON_ID "1"
-#define VBATPIN A5
-#define panicpin A0
-#define panicpinled 16
+#define RF95_TX_POWER 23
+#define RADIO_ID 1
+#define MESSAGE_SIZE_BYTES 16
 
-// globals
-float measuredvbat = 0;
-float highvoltage = 4.3;
-float lowvoltage = 3.25;
-int valbutton = 0;
-int valpower = 0;
-int panicstate = 0;
-int panicbounce = 0;
-int powerstate = 0;
-int gps_counter = 0;
-char panic_state[] = "0";
-char gps_lat[] = "37.227726000000";  //default lat and long values for testing
-char gps_long[] = "-80.42221600000";
-float batpercent = 100;
-bool inPanic = false;
-bool prevPanicState = false;
+#define SLEEP_TIME 10000
+#define SLEEP_TIME_VARIANCE 2000
 
-// Singleton instance of the radio driver
+#define DEBUG_BAUD 9600
+#define GPS_BAUD 9600
+#define SERIAL_DEBUG true
+#define DEBUG_START_DELAY_SEC 10
+
+
+// Singletons
 RH_RF95 rf95(RFM95_CS, RFM95_INT);
 TinyGPSPlus gps;
+uint8_t message[MESSAGE_SIZE_BYTES];
+int8_t messageID = 0;
 
 void setup() 
 {
-  pinMode(RFM95_RST, OUTPUT);
-  digitalWrite(RFM95_RST, HIGH);
-
-  //Serial.begin(9600);  //comment this back in to allow print statements
-  Serial1.begin(9600);
-  // while (!Serial || !Serial1) {
-  //   delay(1);
-  // }
-  while(!Serial1) {
-    delay(10);
+  // start serial
+  if (SERIAL_DEBUG)
+  {
+    Serial.begin(DEBUG_BAUD);
+    
+    //countdown startup
+    for (int i=DEBUG_START_DELAY_SEC; i>0; i--)
+    {
+      serialLog("Starting in ", i, "");
+      delay(1000);
+    }
   }
+  Serial1.begin(GPS_BAUD);
 
-  delay(100);
-
-  //intitate pins on the feather for I/O
-  pinMode(panicpin, INPUT);
-
+  // set pinmodes
+  //pinMode(RFM95_RST, OUTPUT);
+  pinMode(PANIC_BUTTON_PIN, INPUT);
   pinMode(A1, INPUT);
-
-  pinMode(panicpinled, OUTPUT);
-
+  pinMode(PANIC_LED_PIN, OUTPUT);
   pinMode(A3, OUTPUT);
-
   pinMode(1, OUTPUT);
+  pinMode(VBAT_PIN, INPUT_PULLUP);
+  pinMode(NOISE_SEED_PIN, INPUT);
 
-  //for battery read
-  pinMode(VBATPIN, INPUT_PULLUP);
-  //for display
-  myDisplay.begin(SSD1306_SWITCHCAPVCC, 0x3C);
-
-
-
-  // Serial.println("Feather LoRa TX Test!");
-
-  // manual reset
+  // manually reset rf95
   digitalWrite(RFM95_RST, LOW);
   delay(10);
   digitalWrite(RFM95_RST, HIGH);
-  delay(10);
+  delay(10);  
 
-  while (!rf95.init()) {
-    // Serial.println("LoRa radio init failed");
-    // Serial.println("Uncomment '#define SERIAL_DEBUG' in RH_RF95.cpp for detailed debug info");
-    while (1);
+  // init rf95
+  serialLog("Initializing RF95...");
+  if (!rf95.init())
+  {
+    serialLog("Failed to initialize RF95");
+    while (true);
   }
-  // Serial.println("LoRa radio init OK!");
 
-  // Defaults after init are 434.0MHz, modulation GFSK_Rb250Fd250, +13dbM
-  if (!rf95.setFrequency(RF95_FREQ)) {
-    // Serial.println("setFrequency failed");
-    while (1);
+  serialLog("Setting frequency to ", RF95_FREQ, " MHZ...");
+  if (!rf95.setFrequency(RF95_FREQ))
+  {
+    serialLog("Failed to set frequency");
+    while (true);
   }
-  // Serial.print("Set Freq to: "); Serial.println(RF95_FREQ);
-  
-  // Defaults after init are 434.0MHz, 13dBm, Bw = 125 kHz, Cr = 4/5, Sf = 128chips/symbol, CRC on
+  serialLog("Setting TX power to ", RF95_TX_POWER, " dBm...");
+  rf95.setTxPower(RF95_TX_POWER, false);
 
-  // The default transmitter power is 13dBm, using PA_BOOST.
-  // If you are using RFM95/96/97/98 modules which uses the PA_BOOST transmitter pin, then 
-  // you can set transmitter powers from 5 to 23 dBm:
-  rf95.setTxPower(23, false);
+  serialLog("RF95 initialized.");
+
+  //set random seed using noise from analoge
+  uint32_t noise = analogRead(NOISE_SEED_PIN);
+  randomSeed(noise);
+  serialLog("Setting random seed with noise: ", noise, "");
+
+  serialLog("Setup Complete\n");
 }
-
-int16_t packetnum = 0;  // packet counter, we increment per xmission
 
 void loop()
 {
-  // Serial.println("Transmitting..."); // Send a message to rf95_server
+  /*
+  packet structure:
+  - 16 bit radio ID
+  - 1 bit panic state
+  - 7 bit message ID
+  - 32 bit latitude
+  - 32 bit longitude
+  - 8 bit battery life
+  - 32 bit UTC
 
-  //initialize panic state and gps values
-  
-/**  COMMENTED OUT FOR SMART DELAY
-  if(Serial1.available()){
-    char c = Serial1.read();
-    gps.encode(c);
+  Total size: 128 bits or 16 bytes
+  */
+
+  // init data for message
+  bool panicState;
+  float gpsLat = 0;
+  float gpsLong = 0;
+  uint8_t batteryLife;
+  int32_t utc;
+
+  // read gps data from Serial1
+  if (gps.location.isValid())
+  {
+    gpsLat = gps.location.lat();
+    gpsLong = gps.location.lng();
   }
-  **/
-smartDelay(100); //Spends one second filling recieve buffer
-  
-  if(gps.location.isValid()){
-    
-    Serial.println("done");
-    Serial.print("Latitude:         ");
-    Serial.println(gps.location.lat(), 6);
-    float gps_lat_float = gps.location.lat();  
-    String gps_lat_string = "";
-    gps_lat_string += String(int(gps_lat_float)) + "." + String(getDecimal(gps_lat_float)); //combining both whole and decimal part in string with a fullstop between them
-    // Serial.print("stringVal: ");Serial.println(gps_lat);              //display string value
-    gps_lat_string.toCharArray(gps_lat, gps_lat_string.length()+1);
-    while(strlen(gps_lat) < 15) {
-      strcat(gps_lat, "0");
-    }
-
-    float gps_long_float = gps.location.lng();
-    String gps_long_string = "";
-    gps_long_string += String(int(gps_long_float)) + "." + String(getDecimal(gps_long_float)); //combining both whole and decimal part in string with a fullstop between them
-    // Serial.print("stringVal: ");Serial.println(gps_lat); 
-    gps_long_string.toCharArray(gps_long, gps_long_string.length()+1);
-    while(strlen(gps_long) < 15) {
-      strcat(gps_long, "0");
-    }
-
+  else
+  {
+    serialLog("GPS location invalid");
   }
 
-  //panic button
-  valbutton = analogRead(panicpin);
-
-  //power switch
-  valpower = analogRead(A1);
-
-  // Serial.println(valbutton); 
-
-   if (valbutton > 1000) {
-    if (panicbounce == 0)
-      if (panicstate == 0){
-        panicstate = 1;
-        panicbounce = 1;
-
-      }
-      else if (panicstate == 1){
-        panicstate = 0;
-        panicbounce = 1;
-      }
+  if (gps.time.isValid())
+  {
+    utc = gps.time.value();
   }
-  else {
-    panicbounce = 0;
-  }
-  //sense panic button - hen its greater than 1000 the button is sensed...
-  if (panicstate == 1) {
-    //led on
-    digitalWrite(panicpinled, HIGH);;
-    panic_state[0] = '1';
-    if (prevPanicState == false) {
-      prevPanicState = true;
-      gps_counter = 100;
-    }
-
-  } else {
-    //led off
-    digitalWrite(panicpinled, LOW);
-    panic_state[0] = '0';
-    if (prevPanicState == true) {
-      prevPanicState = false;
-      gps_counter = 100;
-    }
-  }
-  //this is using switch button - greater than 1000 when swich is down
-  if (valpower > 1000) {
-
-    digitalWrite(A3, LOW);
-    //Serial.println("Device powered on!");
-  } else {
-    //led off
-    digitalWrite(A3, HIGH);
-
+  else
+  {
+    serialLog("GPS time invalid");
   }
 
-  //CODE FOR BATTERY READ AND OLED DISPLAY
-  if (gps_counter >= 200){
-  measuredvbat = analogRead(VBATPIN);
-  // Serial.println(measuredvbat);
-  measuredvbat = 750;
-  measuredvbat *= 2;    // we divided by 2, so multiply back
-  measuredvbat *= 3.3;  // Multiply by 3.3V, our reference voltage
-  measuredvbat /=  1024; // convert to voltage
-  
-  batpercent = ((measuredvbat - lowvoltage) / (highvoltage - lowvoltage)) * 100;  //linear battery relationship - does not perfectly follow model of battery
-  // Serial.println("batpercent: " + String(batpercent));  
+  // send message
+  encodeMessage(RADIO_ID, panicState, messageID, gpsLat, gpsLong, batteryLife, utc);
+  rf95.send(message, MESSAGE_SIZE_BYTES);
 
-  //convert gps data to an array of chars
-
-  //Beacon ID - 2, lat - 12, long - 12, panic state - 1
-  if(gps_counter >= 100) {
-    
-    char radiopacket[35] = "";
-    strcat(radiopacket, BEACON_ID);
-    strcat(radiopacket, gps_lat);
-    strcat(radiopacket, gps_long);
-
-    //***dummy battery reading for testing - uncomment if there are issues with the actual battery reading below
-    // String bat_string = "";
-    // char bat_chars[] = "097";   
-
-    //***actaul battery reading - if there are issues, comment out and use dummy reading above
-    bat_string += String(int(ceil(batpercent)));
-    Serial.println("string batpercent: " + bat_string);
-
-    if(bat_string.length() == 2) {
-      bat_chars[0] = '0';
-    }
-    if(bat_string.length() == 1) {
-      bat_chars[0] = '0';
-      bat_chars[1] = '0';
-    }
-     
-    // // Serial.print("stringVal: ");Serial.println(gps_lat); 
-    // bat_string.toCharArray(bat_chars, bat_string.length()+1);
-    strcat(radiopacket, bat_chars);
-    strcat(radiopacket, panic_state);
-    //Serial.print("Sending "); Serial.println(radiopacket);
-    rf95.send((uint8_t *)radiopacket, 36);
-    gps_counter = 0;
-  }
-  gps_counter += 1;
-
-  delay(50);
-
+  // noisy wait
+  messageID++;
+  long waitTime =  random(SLEEP_TIME - SLEEP_TIME_VARIANCE, SLEEP_TIME + SLEEP_TIME_VARIANCE);
+  serialLog("Waiting for ", waitTime, " ms");
+  smartDelay(waitTime);
 }
 
-//function to extract decimal part of float
-long getDecimal(float val)
-{
-  int intPart = int(val);
-  long decPart = 1000000000*(val-intPart); //I am multiplying by 1000 assuming that the foat values will have a maximum of 3 decimal places. 
-                                    //Change to match the number of decimal places you need
-  if(decPart>0)return(decPart);           //return the decimal part of float number if it is available 
-  else if(decPart<0)return((-1)*decPart); //if negative, multiply by -1
-  else if(decPart=0)return(00);           //return 0 if decimal part of float number is not available
-  return 0;
-
-}
-
+// delay funciton that reads from GPS serial while waiting
 static void smartDelay(unsigned long ms)
 {
   unsigned long start = millis();
-  do 
+  while (millis() - start < ms)
   {
-    while (Serial1.available())
+    if (Serial1.available())
+    {
       gps.encode(Serial1.read());
-  } while (millis() - start < ms);
+    }
+  }
+}
+
+void encodeMessage(uint16_t radioID, bool panicState, int8_t messageID, float gpsLat, float gpsLong, uint8_t batteryLife, int32_t utc)
+{
+  int byteIndex = 0;
+
+  // encode radio ID
+  for (int i = sizeof(radioID)-1; i>=0; i--)
+  {
+    message[byteIndex] = getByte(radioID, i);
+    byteIndex++;
+  }
+
+  // encode panicState and messageID
+  uint8_t panicMask = 0;
+  if (panicState)
+  {
+    panicMask = 0b10000000;
+  }
+  message[byteIndex] = (panicMask & messageID);
+  byteIndex++;
+
+  // encode gpsLat
+  for (int i = sizeof(gpsLat)-1; i>=0; i--)
+  {
+    message[byteIndex] = getByte(gpsLat, i);
+    byteIndex++;
+  }
+
+  // encode gpsLong
+  for (int i = sizeof(gpsLong)-1; i>=0; i--)
+  {
+    message[byteIndex] = getByte(gpsLong, i);
+    byteIndex++;
+  }
+
+  // encode batteryLife
+  for (int i = sizeof(batteryLife)-1; i>=0; i--)
+  {
+    message[byteIndex] = getByte(batteryLife, i);
+    byteIndex++;
+  }
+
+  // encode utc
+  for (int i = sizeof(utc)-1; i>=0; i--)
+  {
+    message[byteIndex] = getByte(utc, i);
+    byteIndex++;
+  }
+}
+
+uint8_t getByte(uint8_t index, long data)
+{
+  // create a bitmask for 1 byte and shift to the specified index 
+  long mask = 0xFF << index;
+
+  // get the byte and shift back to LSB position
+  data = (mask & data) >> index;
+
+  // cast to unsigned int type (single byte)
+  return (uint8_t)data;
+}
+
+void serialLog(String message)
+{
+  if (SERIAL_DEBUG)
+  {
+    Serial.println(message);
+  }
+}
+
+// overloaded for inserting float value
+void serialLog(String preMessage, double value, String postMessage)
+{
+  if (SERIAL_DEBUG)
+  {
+    Serial.print(preMessage);
+    Serial.print(value);
+    Serial.println(postMessage);
+  }
 }
