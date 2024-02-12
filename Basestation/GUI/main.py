@@ -42,6 +42,9 @@ class MapManager(QtCore.QObject):
         self.radioSocket.connect(GNURADIO_ADDR)
         # Creates a folium map to store markers
         self.map = folium.Map(location=[37.227779, -80.422289], zoom_start=13)
+        # Arrays used for calculating map bounds later
+        self.latitudes = []
+        self.longitudes = []
         # Starts a separate thread that manages the map
         threading.Thread(target=self.exec, daemon=True).start()
 
@@ -94,6 +97,9 @@ class MapManager(QtCore.QObject):
             battery_life,
             utc_time,
         ) = point
+        # Append point to list of latitudes and longitudes
+        self.latitudes.append(latitude)
+        self.longitudes.append(longitude)
         # Format a string for the map marker
         popup_string = (
             f"Radio ID: {radio_id}<br>"
@@ -111,6 +117,10 @@ class MapManager(QtCore.QObject):
         popup = folium.Popup(iframe, min_width=250, max_width=250)
         # Add the marker to the folium map
         folium.Marker(location=(latitude, longitude), popup=popup).add_to(self.map)
+        # Adjust map bounds so all points can be seen
+        southwest_point = (min(self.latitudes) - 0.01, min(self.longitudes) - 0.01)
+        northeast_point = (max(self.latitudes) + 0.01, max(self.longitudes) + 0.01)
+        self.map.fit_bounds((southwest_point, northeast_point))
 
     def decode(self, received_data: bytes):
         """
