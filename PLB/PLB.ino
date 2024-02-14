@@ -12,9 +12,11 @@
 #define RFM95_RST 4
 #define RFM95_INT 3
 
-#define VBAT_PIN A5
-#define PANIC_BUTTON_PIN A0
-#define PANIC_LED_PIN 16
+#define STANDBY_BUTTON_PIN 13
+#define PANIC_BUTTON_PIN 12
+#define POWER_LED_PIN 11
+#define STANDBY_LED_PIN 10
+#define PANIC_LED_PIN 9
 #define NOISE_SEED_PIN A4 //note this pin is not connected to anything, we need the noise from the open connection
 
 
@@ -38,6 +40,8 @@ RH_RF95 rf95(RFM95_CS, RFM95_INT);
 TinyGPSPlus gps;
 uint8_t message[MESSAGE_SIZE_BYTES];
 int8_t messageID = 0;
+bool panicState = false;
+bool standbyState = false; 
 
 void setup() 
 {
@@ -55,14 +59,13 @@ void setup()
   }
   Serial1.begin(GPS_BAUD);
 
-  // set pinmodes
-  //pinMode(RFM95_RST, OUTPUT);
+  // set pinmodes  
+  pinMode(RFM95_RST, OUTPUT);
+  pinMode(STANDBY_BUTTON_PIN, INPUT);
   pinMode(PANIC_BUTTON_PIN, INPUT);
-  pinMode(A1, INPUT);
+  pinMode(POWER_LED_PIN, OUTPUT);
+  pinMode(STANDBY_LED_PIN, OUTPUT);
   pinMode(PANIC_LED_PIN, OUTPUT);
-  pinMode(A3, OUTPUT);
-  pinMode(1, OUTPUT);
-  pinMode(VBAT_PIN, INPUT_PULLUP);
   pinMode(NOISE_SEED_PIN, INPUT);
 
   // manually reset rf95
@@ -76,14 +79,14 @@ void setup()
   if (!rf95.init())
   {
     serialLog("Failed to initialize RF95");
-    while (true);
+    errorLoop();
   }
 
   serialLog("Setting frequency to ", RF95_FREQ, " MHZ...");
   if (!rf95.setFrequency(RF95_FREQ))
   {
     serialLog("Failed to set frequency");
-    while (true);
+    errorLoop();
   }
   serialLog("Setting TX power to ", RF95_TX_POWER, " dBm...");
   rf95.setTxPower(RF95_TX_POWER, false);
@@ -95,6 +98,7 @@ void setup()
   randomSeed(noise);
   serialLog("Setting random seed with noise: ", noise, "");
 
+  digitalWrite(POWER_LED_PIN, HIGH);
   serialLog("Setup Complete\n");
 }
 
@@ -114,7 +118,6 @@ void loop()
   */
 
   // init data for message
-  bool panicState;
   float gpsLat = 0;
   float gpsLong = 0;
   uint8_t batteryLife;
@@ -138,6 +141,14 @@ void loop()
   else
   {
     serialLog("GPS time invalid");
+  }
+  if (gps.satellites.isValid())
+  {
+    serialLog("Number of GPS satellites: ", gps.satellites.value(),""); 
+  }
+  else
+  {
+    serialLog("GPS satellites invalid");
   }
 
   // send message
@@ -241,5 +252,19 @@ void serialLog(String preMessage, double value, String postMessage)
     Serial.print(preMessage);
     Serial.print(value);
     Serial.println(postMessage);
+  }
+}
+
+void errorLoop()
+{
+  digitalWrite(POWER_LED_PIN, LOW);
+  digitalWrite(STANDBY_BUTTON_PIN, LOW);
+
+  while (true)
+  {
+    digitalWrite(PANIC_LED_PIN, HIGH);
+    delay(500);
+    digitalWrite(PANIC_LED_PIN, LOW);
+    delay(500);
   }
 }
