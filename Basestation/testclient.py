@@ -1,6 +1,8 @@
 ## imports
 import socket
-import sys
+from datetime import *
+import time
+import struct
 
 
 ## constants
@@ -11,17 +13,33 @@ PORT = 8080
 
 ## main
 if __name__ == "__main__":
-    try:
-        # connect
-        print(f"Connecting to {HOST}:{PORT} ...")
-        serverSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        serverSocket.connect((HOST, PORT))               
+    # connect
+    print(f"Connecting to {HOST}:{PORT} ...")
+    serverSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    serverSocket.connect((HOST, PORT))               
 
-        # get data
-        while (True):
+    # get data
+    while (True):
+        try:
             received_data = serverSocket.recv(BUFFER_SIZE)
-            print(received_data)
+            received_data = received_data[4:]
 
-    except OSError as error:
-        print(f"Error: {error}", file=sys.stderr)
-        sys.exit(1)
+            radioID = int.from_bytes(received_data[0:2])
+            panicState = int(received_data[2]) < 0
+            messageID = int(received_data[2] & 0b0111111)
+            gpsLat = struct.unpack('>f', received_data[3:7])[0]
+            gpsLong = struct.unpack('>f', received_data[7:11])[0]
+            batteryLife = int(received_data[11])
+            utc = int.from_bytes(received_data[12:16], signed=False)
+
+            print("Radio ID:", radioID)
+            print("Panic State:", panicState)
+            print("Message ID:", messageID)
+            print("GPS Latitude:", gpsLat)
+            print("GPS Longitude:", gpsLong)
+            print("Battery Life:", batteryLife)
+            print("Timestamp:", utc, date.fromtimestamp(utc).ctime())
+        except:
+            print("Error Decoding")
+        finally:
+            print("\n")
