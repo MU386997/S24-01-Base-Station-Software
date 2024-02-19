@@ -159,6 +159,7 @@ void loop()
   messageID++;
   long waitTime =  random(SLEEP_TIME - SLEEP_TIME_VARIANCE, SLEEP_TIME + SLEEP_TIME_VARIANCE);
   serialLog("Waiting for ", waitTime, " ms");
+  serialLog("");
   smartDelay(waitTime);
 }
 
@@ -180,60 +181,49 @@ void encodeMessage(uint16_t radioID, bool panicState, int8_t messageID, float gp
   int byteIndex = 0;
 
   // encode radio ID
-  for (int i = sizeof(radioID)-1; i>=0; i--)
+  for (int i=sizeof(radioID)-1; i>=0; i--)
   {
-    message[byteIndex] = getByte(radioID, i);
+    //cast data to byte array then get byte by index
+    message[byteIndex] = ((uint8_t*)&radioID)[i];
     byteIndex++;
   }
 
   // encode panicState and messageID
-  uint8_t panicMask = 0;
+  uint8_t panicMask = 0b00000000;
   if (panicState)
   {
     panicMask = 0b10000000;
   }
-  message[byteIndex] = (panicMask & messageID);
+  message[byteIndex] = (messageID & 0b01111111) | panicMask;
   byteIndex++;
 
   // encode gpsLat
   for (int i = sizeof(gpsLat)-1; i>=0; i--)
   {
-    message[byteIndex] = getByte(gpsLat, i);
+    //cast data to byte array then get byte by index
+    message[byteIndex] = ((uint8_t*)&gpsLat)[i];
     byteIndex++;
   }
 
   // encode gpsLong
   for (int i = sizeof(gpsLong)-1; i>=0; i--)
   {
-    message[byteIndex] = getByte(gpsLong, i);
+    //cast data to byte array then get byte by index
+    message[byteIndex] = ((uint8_t*)&gpsLong)[i];
     byteIndex++;
   }
 
   // encode batteryLife
-  for (int i = sizeof(batteryLife)-1; i>=0; i--)
-  {
-    message[byteIndex] = getByte(batteryLife, i);
-    byteIndex++;
-  }
+  message[byteIndex] = batteryLife;
+  byteIndex++;
 
   // encode utc
   for (int i = sizeof(utc)-1; i>=0; i--)
   {
-    message[byteIndex] = getByte(utc, i);
+    //cast data to byte array then get byte by index
+    message[byteIndex] = ((uint8_t*)&utc)[i];
     byteIndex++;
   }
-}
-
-uint8_t getByte(uint8_t index, long data)
-{
-  // create a bitmask for 1 byte and shift to the specified index 
-  long mask = 0xFF << index;
-
-  // get the byte and shift back to LSB position
-  data = (mask & data) >> index;
-
-  // cast to unsigned int type (single byte)
-  return (uint8_t)data;
 }
 
 void serialLog(String message)
