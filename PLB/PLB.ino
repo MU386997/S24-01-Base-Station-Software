@@ -1,51 +1,53 @@
 // includes
-#include <stdlib.h>
-#include <SPI.h>
 #include <RH_RF95.h>
-#include "TinyGPS++.h"
-#include <Wire.h>
-#include <vector>
+#include <TinyGPS++.h>
+#include <TimeLib.h>
 
 
 // pins
-#define RFM95_CS 8
-#define RFM95_RST 4
-#define RFM95_INT 3
+#define RFM95_CS 8                  // this pin is wired on the feather PCB and is out of our control
+#define RFM95_RST 4                 // this pin is wired on the feather PCB and is out of our control
+#define RFM95_INT 3                 // this pin is wired on the feather PCB and is out of our control
 
-#define STANDBY_BUTTON_PIN 13
-#define PANIC_BUTTON_PIN 12
+#define VBAT_PIN A7                 // this pin is wired on the feather PCB and is out of our control
+#define PANIC_BUTTON_PIN 13
+#define STANDBY_BUTTON_PIN 12
 #define POWER_LED_PIN 11
 #define STANDBY_LED_PIN 10
 #define PANIC_LED_PIN 9
-#define NOISE_SEED_PIN A4 //note this pin is not connected to anything, we need the noise from the open connection
+#define NOISE_SEED_PIN A4           // this pin is not connected to anything, we need the noise from the open connection
 
 
 // constants
 #define RF95_FREQ 915.0
 #define RF95_TX_POWER 23
 #define RADIO_ID 1
-#define MESSAGE_SIZE_BYTES 16
+#define PACKET_SIZE_BYTES 16
 
-#define SLEEP_TIME 10000
-#define SLEEP_TIME_VARIANCE 2000
+#define SLEEP_TIME 10000            // time between transmissions
+#define SLEEP_TIME_VARIANCE 2000    // randomness in sleep time to prevent two transmitters from consistently colliding
+#define GPS_TIME_ALLOWABLE_AGE 500  // how old (in ms) the GPS time is allowed to be when syncing with the system clock
 
 #define DEBUG_BAUD 9600
 #define GPS_BAUD 9600
-#define SERIAL_DEBUG true
-#define DEBUG_START_DELAY_SEC 10
+#define SERIAL_DEBUG true           // whether to display debugging info on the USB Serial
+#define DEBUG_START_DELAY_SEC 10    // starting delay to allow the USB Serial to be connected before running (a low number may miss some information)
+
+#define BATTERY_MIN_THRESHOLD 496   // calculated from 3.2 volts according to https://learn.adafruit.com/adafruit-feather-m0-adalogger/power-management
+#define BATTERY_MAX_THRESHOLD 652   // calculated from 4.2 volts according to https://learn.adafruit.com/adafruit-feather-m0-adalogger/power-management
 
 
 // Singletons
 RH_RF95 rf95(RFM95_CS, RFM95_INT);
 TinyGPSPlus gps;
-uint8_t message[MESSAGE_SIZE_BYTES];
+uint8_t message[PACKET_SIZE_BYTES];
 int8_t messageID = 0;
 bool panicState = false;
-bool standbyState = false; 
 
 void setup() 
 {
   // start serial
+  Serial1.begin(GPS_BAUD);
   if (SERIAL_DEBUG)
   {
     Serial.begin(DEBUG_BAUD);
@@ -53,14 +55,14 @@ void setup()
     //countdown startup
     for (int i=DEBUG_START_DELAY_SEC; i>0; i--)
     {
-      serialLog("Starting in ", i, "");
-      delay(1000);
+      serialLogInteger("Starting in:", i);
+      smartDelay(1000);
     }
   }
-  Serial1.begin(GPS_BAUD);
 
   // set pinmodes  
   pinMode(RFM95_RST, OUTPUT);
+  pinMode(VBAT_PIN, INPUT);
   pinMode(STANDBY_BUTTON_PIN, INPUT);
   pinMode(PANIC_BUTTON_PIN, INPUT);
   pinMode(POWER_LED_PIN, OUTPUT);
@@ -82,13 +84,13 @@ void setup()
     errorLoop();
   }
 
-  serialLog("Setting frequency to ", RF95_FREQ, " MHZ...");
+  serialLogDouble("Setting frequency to", RF95_FREQ, "MHZ...");
   if (!rf95.setFrequency(RF95_FREQ))
   {
     serialLog("Failed to set frequency");
     errorLoop();
   }
-  serialLog("Setting TX power to ", RF95_TX_POWER, " dBm...");
+  serialLogInteger("Setting TX power to", RF95_TX_POWER, "dBm...");
   rf95.setTxPower(RF95_TX_POWER, false);
 
   serialLog("RF95 initialized.");
@@ -96,13 +98,107 @@ void setup()
   //set random seed using noise from analoge
   uint32_t noise = analogRead(NOISE_SEED_PIN);
   randomSeed(noise);
-  serialLog("Setting random seed with noise: ", noise, "");
+  serialLogInteger("Setting random seed with noise:", noise);
 
   digitalWrite(POWER_LED_PIN, HIGH);
   serialLog("Setup Complete\n");
 }
 
 void loop()
+{
+  bool standbyMode = !digitalRead(STANDBY_BUTTON_PIN);
+  if (standbyMode && !panicState)
+  {
+    // standby mode
+    rf95.sleep();
+  }
+  else
+  {
+    // activeMode
+    activeMode();
+  }
+}
+
+// delay funciton that reads from GPS serial while waiting. Also exited by panic state
+static void smartDelay(uint16_t ms)
+{
+  unsigned long start = millis();
+  while (!panicState && (millis() - start) < ms)
+  {
+    if (Serial1.available())
+    {
+      gps.encode(Serial1.read());
+    }
+  }
+}
+
+void activeMode()
+{
+  // read battery life
+  long batteryReading = analogRead(VBAT_PIN);
+  batteryReading = map(batteryReading, BATTERY_MIN_THRESHOLD, BATTERY_MAX_THRESHOLD, 0, 100); // map to uint8_t
+  batteryReading = max(batteryReading, 0); // trim negative overflow 
+  batteryReading = min(batteryReading, 100); // trim positive overflow
+  uint8_t batteryPercent = batteryReading; //cast
+
+  // read gps data from Serial1
+  float gpsLat = 0;
+  float gpsLong = 0;
+  if (gps.location.isValid())
+  {
+    gpsLat = gps.location.lat();
+    gpsLong = gps.location.lng();
+  }
+  else
+  {
+    serialLog("GPS location invalid");
+  }
+
+  if (gps.time.isValid() && gps.time.age() < GPS_TIME_ALLOWABLE_AGE && gps.date.isValid())
+  {
+    //resync the system clock with the gps
+    setTime(gps.time.hour(), gps.time.minute(), gps.time.second(), gps.date.day(), gps.date.month(), gps.date.year());
+  }
+  else
+  {
+    serialLog("Unable to sync time with GPS");
+  }
+
+  if (gps.satellites.isValid())
+  {
+    serialLogInteger("Number of GPS satellites:", gps.satellites.value()); 
+  }
+  else
+  {
+    serialLog("GPS satellites invalid");
+  }
+
+  if (gps.location.isValid() && timeStatus() != timeNotSet)
+  {
+    int32_t utc = now();
+
+    //log packet contents before send
+    serialLogInteger("Radio ID:", RADIO_ID);
+    serialLogInteger("Panic State:", panicState);
+    serialLogInteger("Message ID:", messageID);
+    serialLogDouble("GPS latitude:", gpsLat);
+    serialLogDouble("GPS longitude:", gpsLong);
+    serialLogInteger("Battery Percent:", batteryPercent, "%");
+    serialLogInteger("Timestamp:", utc);
+
+    // send message
+    encodeMessage(RADIO_ID, panicState, messageID, gpsLat, gpsLong, batteryPercent, utc);
+    rf95.send(message, PACKET_SIZE_BYTES);
+    messageID = (messageID + 1) & 0b01111111; // increment without consuming most significant bit (reserved for panic state)
+  }
+
+  // noisy wait
+  uint16_t waitTime =  random(SLEEP_TIME - SLEEP_TIME_VARIANCE, SLEEP_TIME + SLEEP_TIME_VARIANCE);
+  serialLogInteger("Waiting for", waitTime, "ms\n");
+  smartDelay(waitTime);
+}
+
+void encodeMessage(uint16_t radioID, bool panicState, int8_t messageID, float gpsLat, float gpsLong, uint8_t batteryPercent, int32_t utc)
 {
   /*
   packet structure:
@@ -117,67 +213,6 @@ void loop()
   Total size: 128 bits or 16 bytes
   */
 
-  // init data for message
-  float gpsLat = 0;
-  float gpsLong = 0;
-  uint8_t batteryLife;
-  int32_t utc;
-
-  // read gps data from Serial1
-  if (gps.location.isValid())
-  {
-    gpsLat = gps.location.lat();
-    gpsLong = gps.location.lng();
-  }
-  else
-  {
-    serialLog("GPS location invalid");
-  }
-
-  if (gps.time.isValid())
-  {
-    utc = gps.time.value();
-  }
-  else
-  {
-    serialLog("GPS time invalid");
-  }
-  if (gps.satellites.isValid())
-  {
-    serialLog("Number of GPS satellites: ", gps.satellites.value(),""); 
-  }
-  else
-  {
-    serialLog("GPS satellites invalid");
-  }
-
-  // send message
-  encodeMessage(RADIO_ID, panicState, messageID, gpsLat, gpsLong, batteryLife, utc);
-  rf95.send(message, MESSAGE_SIZE_BYTES);
-
-  // noisy wait
-  messageID++;
-  long waitTime =  random(SLEEP_TIME - SLEEP_TIME_VARIANCE, SLEEP_TIME + SLEEP_TIME_VARIANCE);
-  serialLog("Waiting for ", waitTime, " ms");
-  serialLog("");
-  smartDelay(waitTime);
-}
-
-// delay funciton that reads from GPS serial while waiting
-static void smartDelay(unsigned long ms)
-{
-  unsigned long start = millis();
-  while (millis() - start < ms)
-  {
-    if (Serial1.available())
-    {
-      gps.encode(Serial1.read());
-    }
-  }
-}
-
-void encodeMessage(uint16_t radioID, bool panicState, int8_t messageID, float gpsLat, float gpsLong, uint8_t batteryLife, int32_t utc)
-{
   int byteIndex = 0;
 
   // encode radio ID
@@ -189,12 +224,8 @@ void encodeMessage(uint16_t radioID, bool panicState, int8_t messageID, float gp
   }
 
   // encode panicState and messageID
-  uint8_t panicMask = 0b00000000;
-  if (panicState)
-  {
-    panicMask = 0b10000000;
-  }
-  message[byteIndex] = (messageID & 0b01111111) | panicMask;
+  uint8_t panicMask = panicState ? 0b10000000 : 0b00000000;
+  message[byteIndex] = messageID | panicMask;
   byteIndex++;
 
   // encode gpsLat
@@ -213,8 +244,8 @@ void encodeMessage(uint16_t radioID, bool panicState, int8_t messageID, float gp
     byteIndex++;
   }
 
-  // encode batteryLife
-  message[byteIndex] = batteryLife;
+  // encode batteryPercent
+  message[byteIndex] = batteryPercent;
   byteIndex++;
 
   // encode utc
@@ -234,14 +265,47 @@ void serialLog(String message)
   }
 }
 
-// overloaded for inserting float value
-void serialLog(String preMessage, double value, String postMessage)
+void serialLogInteger(String prefix, long intValue)
 {
   if (SERIAL_DEBUG)
   {
-    Serial.print(preMessage);
-    Serial.print(value);
-    Serial.println(postMessage);
+    Serial.print(prefix);
+    Serial.print(" ");
+    Serial.println(intValue);
+  }
+}
+
+void serialLogInteger(String prefix, long intValue, String postfix)
+{
+  if (SERIAL_DEBUG)
+  {
+    Serial.print(prefix);
+    Serial.print(" ");
+    Serial.print(intValue);
+    Serial.print(" ");
+    Serial.println(postfix);
+  }
+}
+
+void serialLogDouble(String prefix, double decimalValue)
+{
+  if (SERIAL_DEBUG)
+  {
+    Serial.print(prefix);
+    Serial.print(" ");
+    Serial.println(decimalValue);
+  }
+}
+
+void serialLogDouble(String prefix, double decimalValue, String postfix)
+{
+  if (SERIAL_DEBUG)
+  {
+    Serial.print(prefix);
+    Serial.print(" ");
+    Serial.print(decimalValue);
+    Serial.print(" ");
+    Serial.println(postfix);
   }
 }
 
