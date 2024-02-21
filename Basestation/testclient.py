@@ -38,7 +38,7 @@ if __name__ == "__main__":
             print("GPS Latitude:", gpsLat)
             print("GPS Longitude:", gpsLong)
             print("Battery Life:", batteryLife)
-            print("Timestamp:", utc, date.fromtimestamp(utc).ctime())
+            print("Timestamp:", utc)
         except:
             print("Error Decoding")
         finally:
