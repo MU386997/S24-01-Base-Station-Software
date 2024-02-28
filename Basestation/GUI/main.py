@@ -156,13 +156,16 @@ class MapManager(QtCore.QObject):
         # Bytes 13-16 are the time in Unix time format (unsigned int: I)
         radio_id, message_byte, latitude, longitude, unix_time = struct.unpack("!HbffxI", received_data)
         # Message id is the absolute value of the message id byte
-        message_id = abs(message_byte)
+        message_id = message_byte & 0b1111111
         # Panic state is determined by the first bit of the message id which also determines the sign
         panic_state = message_byte < 0
         # Byte 12 is battery life from 0 to 255
         battery_life = received_data[11] * 100 / 255
         # Convert unix time to UTC string
         utc_time = datetime.fromtimestamp(unix_time, UTC).strftime("%m-%d-%Y %H:%M:%S")
+
+        # Send an acknoledgement back to GNURadio
+        self.radioSocket.send(received_data[:3])
 
         # Return a tuple with all the necessary info
         return (
