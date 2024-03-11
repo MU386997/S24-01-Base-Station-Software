@@ -44,4 +44,9 @@ if __name__ == "__main__":
             # Send the packet once per connection
             for _ in range(7):
                 time.sleep(2)
-                peer_socket.send(get_random_packet())
+                packet = get_random_packet()
+                peer_socket.send(packet)
+                print(f"Packet sent: {packet}")
+
+                data = peer_socket.recv(BUFFER_SIZE)
+                print(f"Data received: {data}")
