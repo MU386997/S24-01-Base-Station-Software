@@ -107,24 +107,41 @@ void setup()
 void loop()
 {
   bool standbyMode = !digitalRead(STANDBY_BUTTON_PIN);
-  if (standbyMode && !panicState)
+  if (false)//todo standbyMode)
   {
     // standby mode
     rf95.sleep();
+    panicState = false;
   }
   else
   {
     // activeMode
     activeMode();
   }
+
+  // noisy wait
+  uint16_t waitTime =  random(SLEEP_TIME - SLEEP_TIME_VARIANCE, SLEEP_TIME + SLEEP_TIME_VARIANCE);
+  serialLogInteger("Waiting for", waitTime, "ms\n");
+  smartDelay(waitTime);
 }
 
 // delay funciton that reads from GPS serial while waiting. Also exited by panic state
 static void smartDelay(uint16_t ms)
 {
   unsigned long start = millis();
-  while (!panicState && (millis() - start) < ms)
+  while ((millis() - start) < ms)
   {
+    bool newPanicState = digitalRead(PANIC_BUTTON_PIN);
+    if (!panicState && newPanicState)
+    {
+      activeMode();
+      panicState = true;
+    }
+    else if (panicState && !newPanicState)
+    {
+      panicState = false;
+    }
+
     if (Serial1.available())
     {
       gps.encode(Serial1.read());
@@ -187,18 +204,13 @@ void activeMode()
     serialLogInteger("Timestamp:", utc);
 
     // send message
-    encodeMessage(RADIO_ID, panicState, messageID, gpsLat, gpsLong, batteryPercent, utc);
+    encodeMessage(RADIO_ID, messageID, gpsLat, gpsLong, batteryPercent, utc);
     rf95.send(message, PACKET_SIZE_BYTES);
     messageID = (messageID + 1) & 0b01111111; // increment without consuming most significant bit (reserved for panic state)
   }
-
-  // noisy wait
-  uint16_t waitTime =  random(SLEEP_TIME - SLEEP_TIME_VARIANCE, SLEEP_TIME + SLEEP_TIME_VARIANCE);
-  serialLogInteger("Waiting for", waitTime, "ms\n");
-  smartDelay(waitTime);
 }
 
-void encodeMessage(uint16_t radioID, bool panicState, int8_t messageID, float gpsLat, float gpsLong, uint8_t batteryPercent, int32_t utc)
+void encodeMessage(uint16_t radioID, int8_t messageID, float gpsLat, float gpsLong, uint8_t batteryPercent, int32_t utc)
 {
   /*
   packet structure:
