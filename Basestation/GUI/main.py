@@ -14,7 +14,8 @@ from PyQt5 import QtCore, QtWebEngineWidgets, QtWidgets
 import folium
 
 # The GUI is a client that connects to GNURadio
-GNURADIO_ADDR = ("localhost", 8080)
+GNURADIO_RECV_ADDR = ("localhost", 8080)
+GNURADIO_SEND_ADDR = ("localhost", 8081)
 BUFFER_SIZE = 2**12
 
 
@@ -37,9 +38,12 @@ class MapManager(QtCore.QObject):
         and add it to a folium map and update the GUI
         """
         super().__init__()
-        # Make a socket to connect to GNURadio
-        self.radioSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.radioSocket.connect(GNURADIO_ADDR)
+        # Make a socket to recieve data from GNURadio
+        self.recvSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.recvSocket.connect(GNURADIO_RECV_ADDR)
+        # Make a socket to send data to GNURadio
+        self.sendSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.sendSocket.connect(GNURADIO_SEND_ADDR)
         # Creates a folium map to store markers
         self.map = folium.Map(location=[37.227779, -80.422289], zoom_start=13)
         # Arrays used for calculating map bounds later
@@ -53,10 +57,10 @@ class MapManager(QtCore.QObject):
         Main exec loop for the worker
         Runs in a separate thread
         """
-        with self.radioSocket:
+        with self.recvSocket:
             try:
                 # Continuously recieve data from GNURadio
-                while data := self.radioSocket.recv(BUFFER_SIZE):
+                while data := self.recvSocket.recv(BUFFER_SIZE):
                     try:
                         # Decode and add the point to the map
                         self.add_point(self.decode(data))
@@ -165,7 +169,7 @@ class MapManager(QtCore.QObject):
         utc_time = datetime.fromtimestamp(unix_time, UTC).strftime("%m-%d-%Y %H:%M:%S")
 
         # Send an acknoledgement back to GNURadio
-        self.radioSocket.send(received_data[:3])
+        self.sendSocket.send(received_data[:3])
 
         # Return a tuple with all the necessary info
         return (
