@@ -8,7 +8,8 @@ import struct
 import random
 
 # GNU Radio should listen on this port address
-GNURADIO_ADDR = ("localhost", 8080)
+GNURADIO_SEND_ADDR = ("localhost", 8080)
+GNURADIO_RECV_ADDR = ("localhost", 8081)
 BUFFER_SIZE = 2**12
 
 def get_random_packet():
@@ -31,22 +32,30 @@ def get_random_packet():
 
 
 if __name__ == "__main__":
-    # Set up the socket
-    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    server_socket.bind(GNURADIO_ADDR)
-    server_socket.listen()
+    # Set up the send socket
+    server_send_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server_send_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    server_send_socket.bind(GNURADIO_SEND_ADDR)
+    server_send_socket.listen()
+    # Set up the receive socket
+    server_recv_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server_recv_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    server_recv_socket.bind(GNURADIO_RECV_ADDR)
+    server_recv_socket.listen()
 
     # Accept peer connections
-    while peer_connection := server_socket.accept():
-        peer_socket, _ = peer_connection
-        with peer_socket:
-            # Send the packet once per connection
-            for _ in range(7):
-                time.sleep(2)
-                packet = get_random_packet()
-                peer_socket.send(packet)
-                print(f"Packet sent: {packet}")
+    while send_connection := server_send_socket.accept():
+        peer_send_socket, _ = send_connection
+        recv_connection = server_recv_socket.accept()
+        peer_recv_socket, _ = recv_connection
+        with peer_send_socket:
+            with peer_recv_socket:
+                # Send the packet once per connection
+                for _ in range(7):
+                    time.sleep(2)
+                    packet = get_random_packet()
+                    peer_send_socket.send(packet)
+                    print(f"Packet sent: {packet}")
 
-                data = peer_socket.recv(BUFFER_SIZE)
-                print(f"Data received: {data}")
+                    data = peer_recv_socket.recv(BUFFER_SIZE)
+                    print(f"Data received: {data}")
