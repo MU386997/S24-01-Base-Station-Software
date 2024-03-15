@@ -1,7 +1,6 @@
 ## imports
 import socket
 from datetime import *
-import time
 import struct
 
 
