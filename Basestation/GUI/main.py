@@ -38,12 +38,12 @@ class MapManager(QtCore.QObject):
         and add it to a folium map and update the GUI
         """
         super().__init__()
-        # Make a socket to recieve data from GNURadio
-        self.recvSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.recvSocket.connect(GNURADIO_RECV_ADDR)
         # Make a socket to send data to GNURadio
         self.sendSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.sendSocket.connect(GNURADIO_SEND_ADDR)
+        # Make a socket to recieve data from GNURadio
+        self.recvSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.recvSocket.connect(GNURADIO_RECV_ADDR)
         # Creates a folium map to store markers
         self.map = folium.Map(location=[37.227779, -80.422289], zoom_start=13)
         # Arrays used for calculating map bounds later
