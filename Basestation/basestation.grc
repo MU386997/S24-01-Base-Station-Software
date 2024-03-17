@@ -33,6 +33,30 @@ options:
     state: enabled
 
 blocks:
+- name: ack_port
+  id: variable
+  parameters:
+    comment: ''
+    value: '8081'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [576, 16.0]
+    rotation: 0
+    state: enabled
+- name: data_port
+  id: variable
+  parameters:
+    comment: ''
+    value: '8080'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [480, 16.0]
+    rotation: 0
+    state: enabled
 - name: freq
   id: variable
   parameters:
@@ -45,16 +69,16 @@ blocks:
     coordinate: [264, 16.0]
     rotation: 0
     state: enabled
-- name: port
+- name: listen_address
   id: variable
   parameters:
     comment: ''
-    value: '8080'
+    value: '''localhost'''
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [352, 16.0]
+    coordinate: [360, 16.0]
     rotation: 0
     state: enabled
 - name: samp_rate
@@ -67,21 +91,6 @@ blocks:
     bus_source: false
     bus_structure: null
     coordinate: [168, 16.0]
-    rotation: 0
-    state: enabled
-- name: blocks_message_debug_0
-  id: blocks_message_debug
-  parameters:
-    affinity: ''
-    alias: ''
-    comment: ''
-    en_uvec: 'True'
-    log_level: info
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [640, 72.0]
     rotation: 0
     state: enabled
 - name: blocks_stream_to_tagged_stream_0
@@ -100,7 +109,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [232, 432.0]
+    coordinate: [232, 336.0]
     rotation: 0
     state: enabled
 - name: lora_rx_0
@@ -148,7 +157,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [672, 392.0]
+    coordinate: [672, 296.0]
     rotation: 0
     state: enabled
 - name: network_tcp_sink_0
@@ -166,27 +175,27 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [576, 280.0]
+    coordinate: [544, 192.0]
     rotation: 0
     state: enabled
 - name: network_tcp_source_0
   id: network_tcp_source
   parameters:
-    addr: 127.0.0.1
+    addr: listen_address
     affinity: ''
     alias: ''
     comment: ''
     maxoutbuf: '0'
     minoutbuf: '0'
-    port: port
-    server: 'True'
+    port: ack_port
+    server: 'False'
     type: byte
     vlen: '1'
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [64, 424.0]
+    coordinate: [64, 328.0]
     rotation: 0
     state: enabled
 - name: pdu_tagged_stream_to_pdu_0
@@ -203,7 +212,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [448, 440.0]
+    coordinate: [448, 344.0]
     rotation: 0
     state: enabled
 - name: uhd_usrp_sink_0
@@ -480,7 +489,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [928, 392.0]
+    coordinate: [928, 296.0]
     rotation: 0
     state: enabled
 - name: uhd_usrp_source_0
@@ -923,7 +932,6 @@ blocks:
 connections:
 - [blocks_stream_to_tagged_stream_0, '0', pdu_tagged_stream_to_pdu_0, '0']
 - [lora_rx_0, '0', network_tcp_sink_0, '0']
-- [lora_rx_0, out, blocks_message_debug_0, print]
 - [lora_tx_0, '0', uhd_usrp_sink_0, '0']
 - [network_tcp_source_0, '0', blocks_stream_to_tagged_stream_0, '0']
 - [pdu_tagged_stream_to_pdu_0, pdus, lora_tx_0, in]
