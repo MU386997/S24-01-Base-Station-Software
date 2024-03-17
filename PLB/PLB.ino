@@ -20,7 +20,7 @@
 
 // constants
 #define RF95_FREQ 915.0
-#define RF95_TX_POWER 23
+#define RF95_TX_POWER 1
 #define RADIO_ID 1
 #define PACKET_SIZE_BYTES 16
 
