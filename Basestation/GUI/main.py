@@ -4,6 +4,7 @@ GNU Radio and plots the data on an interactive map running in Qt.
 """
 
 from datetime import UTC, datetime
+import time
 import io
 import socket
 import struct
@@ -23,6 +24,7 @@ class PacketLengthError(Exception):
     """
     Creates a new error to throw if the packet is not the right length
     """
+
     pass
 
 
@@ -60,7 +62,7 @@ class MapManager(QtCore.QObject):
         with self.recvSocket:
             try:
                 # Continuously recieve data from GNURadio
-                while data := self.radioSocket.recv(BUFFER_SIZE)[4:]:
+                while data := self.recvSocket.recv(BUFFER_SIZE)[4:]:
                     try:
                         # Decode and add the point to the map
                         self.add_point(self.decode(data))
@@ -132,7 +134,7 @@ class MapManager(QtCore.QObject):
 
         Packet Structure:
          0                   1                   2                   3
-         0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 
+         0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
         +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
         |                               |P|             |               |
         |           Radio ID            |A|  Message ID |   GPS Lat     |
@@ -158,7 +160,9 @@ class MapManager(QtCore.QObject):
         # Bytes 4-7 are GPS latitude (float: f)
         # Bytes 8-11 are GPS longitude (float: f)
         # Bytes 13-16 are the time in Unix time format (unsigned int: I)
-        radio_id, message_byte, latitude, longitude, unix_time = struct.unpack("!HbffxI", received_data)
+        radio_id, message_byte, latitude, longitude, unix_time = struct.unpack(
+            "!HbffxI", received_data
+        )
         # Message id is the absolute value of the message id byte
         message_id = message_byte & 0b1111111
         # Panic state is determined by the first bit of the message id which also determines the sign
@@ -187,6 +191,7 @@ class BaseStationGUI(QtWidgets.QWidget):
     """
     Creates a GUI which has a map for displaying markers
     """
+
     def __init__(self):
         super().__init__()
         self.initUI()
@@ -198,13 +203,16 @@ class BaseStationGUI(QtWidgets.QWidget):
         # Create a window for the GUI
         self.webEngineView = QtWebEngineWidgets.QWebEngineView()
 
-        try:
-            # Create a worker for processing signals
-            self.mapManager = MapManager()
-        except OSError as err:
-            # Print any connection error to the command line
-            print(f"Error: {err}. Make sure GNURadio is open", file=sys.stderr)
-            sys.exit(1)
+        self.mapManager = None
+        while not self.mapManager:
+            try:
+                # Create a worker for processing signals
+                self.mapManager = MapManager()
+            except OSError as err:
+                # Print any connection error to the command line
+                print(f"Error: {err}. Make sure GNURadio is open", file=sys.stderr)
+                print(f"Sleeping for 5 seconds, then trying again")
+                time.sleep(5)
 
         # Load initial map to the GUI
         self.webEngineView.setHtml(self.mapManager.load_HTML())
