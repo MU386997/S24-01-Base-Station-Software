@@ -21,7 +21,7 @@ def get_random_packet():
     battery_life = random.randint(0, 255)
     unix_time = int(time.time())  # Get the current Unix time
     return struct.pack(
-        "!HbffBI",
+        "!xxxxHbffBI",
         radio_id,
         message_id,
         latitude,
