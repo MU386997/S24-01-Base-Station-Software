@@ -188,7 +188,7 @@ blocks:
     maxoutbuf: '0'
     minoutbuf: '0'
     port: ack_port
-    server: 'False'
+    server: 'True'
     type: byte
     vlen: '1'
   states:
