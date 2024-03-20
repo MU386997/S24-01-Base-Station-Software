@@ -1,0 +1,16 @@
+services:
+  basestation:
+    network_mode: "host"
+    build: Basestation
+    privileged: true
+    healthcheck:
+      test: netstat -an | grep -q 8081
+      timeout: 10s
+      retries: 6
+
+  gui:
+    network_mode: "host"
+    depends_on:
+      basestation:
+        condition: service_healthy
+    build: GUI

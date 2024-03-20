@@ -13,4 +13,4 @@ ENV LD_LIBRARY_PATH=/usr/lib64:$LD_LIBRARY_PATH
 
 WORKDIR /basestation
 COPY basestation.py .
-CMD ["python", "basestation.py"]
+CMD python basestation.py
