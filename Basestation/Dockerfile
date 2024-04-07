@@ -11,6 +11,9 @@ RUN  cmake .. && make install -j$(nproc)
 ENV PYTHONPATH=/usr/lib64/python3.11/site-packages:/gr-lora_sdr/include/:$PYTHONPATH
 ENV LD_LIBRARY_PATH=/usr/lib64:$LD_LIBRARY_PATH
 
+# generate python file
 WORKDIR /basestation
-COPY basestation.py .
-CMD python basestation.py
+COPY basestation.grc .
+RUN grcc basestation.grc
+
+#CMD python basestation.py
