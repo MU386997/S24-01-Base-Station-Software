@@ -13,10 +13,6 @@ PORT = 8080
 ## main
 if __name__ == "__main__":
     # connect
-    print(f"Connecting to {HOST}:{PORT+1} ...")
-    ackSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    ackSocket.connect((HOST, PORT+1))
-    time.sleep(1)
     print(f"Connecting to {HOST}:{PORT} ...")
     serverSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     serverSocket.connect((HOST, PORT))               
@@ -34,8 +30,6 @@ if __name__ == "__main__":
             gpsLong = struct.unpack('>f', received_data[7:11])[0]
             batteryLife = int(received_data[11])
             utc = int.from_bytes(received_data[12:16], signed=False)
-
-            ackSocket.send(received_data[0:3])
 
             print("Radio ID:", radioID)
             print("Panic State:", panicState)

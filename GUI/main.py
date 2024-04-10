@@ -40,9 +40,6 @@ class MapManager(QtCore.QObject):
         and add it to a folium map and update the GUI
         """
         super().__init__()
-        # Make a socket to send data to GNURadio
-        self.sendSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.sendSocket.connect(GNURADIO_SEND_ADDR)
         # Make a socket to recieve data from GNURadio
         self.recvSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.recvSocket.connect(GNURADIO_RECV_ADDR)
@@ -171,9 +168,6 @@ class MapManager(QtCore.QObject):
         battery_life = received_data[11] * 100 / 255
         # Convert unix time to UTC string
         utc_time = datetime.fromtimestamp(unix_time, UTC).strftime("%m-%d-%Y %H:%M:%S")
-
-        # Send an acknoledgement back to GNURadio
-        self.sendSocket.send(received_data[:3])
 
         # Return a tuple with all the necessary info
         return (

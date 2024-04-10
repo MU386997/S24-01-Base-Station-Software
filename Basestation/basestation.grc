@@ -33,16 +33,16 @@ options:
     state: enabled
 
 blocks:
-- name: ack_port
+- name: bandwidth
   id: variable
   parameters:
     comment: ''
-    value: '8081'
+    value: '125000'
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [576, 16.0]
+    coordinate: [368, 16.0]
     rotation: 0
     state: enabled
 - name: data_port
@@ -54,7 +54,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [480, 16.0]
+    coordinate: [600, 16.0]
     rotation: 0
     state: enabled
 - name: freq
@@ -66,7 +66,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [264, 16.0]
+    coordinate: [272, 16.0]
     rotation: 0
     state: enabled
 - name: listen_address
@@ -78,7 +78,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [360, 16.0]
+    coordinate: [480, 16.0]
     rotation: 0
     state: enabled
 - name: samp_rate
@@ -93,6 +93,21 @@ blocks:
     coordinate: [168, 16.0]
     rotation: 0
     state: enabled
+- name: blocks_message_debug_0
+  id: blocks_message_debug
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    en_uvec: 'True'
+    log_level: info
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [1536, 32.0]
+    rotation: 0
+    state: enabled
 - name: blocks_stream_to_tagged_stream_0
   id: blocks_stream_to_tagged_stream
   parameters:
@@ -102,14 +117,14 @@ blocks:
     len_tag_key: '"packet_len"'
     maxoutbuf: '0'
     minoutbuf: '0'
-    packet_len: '3'
+    packet_len: '20'
     type: byte
     vlen: '1'
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [232, 336.0]
+    coordinate: [560, 232.0]
     rotation: 0
     state: enabled
 - name: lora_rx_0
@@ -117,7 +132,7 @@ blocks:
   parameters:
     affinity: ''
     alias: ''
-    bw: '125000'
+    bw: bandwidth
     comment: ''
     cr: '1'
     has_crc: 'True'
@@ -142,7 +157,7 @@ blocks:
   parameters:
     affinity: ''
     alias: ''
-    bw: '125000'
+    bw: bandwidth
     comment: ''
     cr: '1'
     frame_zero_padd: '1280'
@@ -157,7 +172,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [672, 296.0]
+    coordinate: [1488, 192.0]
     rotation: 0
     state: enabled
 - name: network_tcp_sink_0
@@ -175,27 +190,25 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [544, 192.0]
+    coordinate: [560, 144.0]
     rotation: 0
     state: enabled
-- name: network_tcp_source_0
-  id: network_tcp_source
+- name: pdu_pdu_lambda_0
+  id: pdu_pdu_lambda
   parameters:
-    addr: listen_address
     affinity: ''
     alias: ''
     comment: ''
+    fn: ' lambda x: pmt.intern(str("").join([chr(x) for x in (pmt.u8vector_elements(pmt.cdr(x)))]))'
+    key: pmt.intern("key")
     maxoutbuf: '0'
+    metadict: Raw Message
     minoutbuf: '0'
-    port: ack_port
-    server: 'True'
-    type: byte
-    vlen: '1'
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [64, 328.0]
+    coordinate: [1272, 240.0]
     rotation: 0
     state: enabled
 - name: pdu_tagged_stream_to_pdu_0
@@ -212,7 +225,41 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [448, 344.0]
+    coordinate: [760, 240.0]
+    rotation: 0
+    state: enabled
+- name: satellites_pdu_head_tail_0
+  id: satellites_pdu_head_tail
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    mode: '3'
+    num: '4'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [968, 232.0]
+    rotation: 0
+    state: enabled
+- name: satellites_pdu_head_tail_1
+  id: satellites_pdu_head_tail
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    mode: '0'
+    num: '3'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [1112, 232.0]
     rotation: 0
     state: enabled
 - name: uhd_usrp_sink_0
@@ -252,7 +299,7 @@ blocks:
     ant7: '"TX/RX"'
     ant8: '"TX/RX"'
     ant9: '"TX/RX"'
-    bw0: '0'
+    bw0: bandwidth
     bw1: '0'
     bw10: '0'
     bw11: '0'
@@ -489,7 +536,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [928, 296.0]
+    coordinate: [1728, 184.0]
     rotation: 0
     state: enabled
 - name: uhd_usrp_source_0
@@ -497,7 +544,7 @@ blocks:
   parameters:
     affinity: ''
     alias: ''
-    ant0: '"TX/RX"'
+    ant0: '"RX2"'
     ant1: '"RX2"'
     ant10: '"RX2"'
     ant11: '"RX2"'
@@ -931,10 +978,14 @@ blocks:
 
 connections:
 - [blocks_stream_to_tagged_stream_0, '0', pdu_tagged_stream_to_pdu_0, '0']
+- [lora_rx_0, '0', blocks_stream_to_tagged_stream_0, '0']
 - [lora_rx_0, '0', network_tcp_sink_0, '0']
 - [lora_tx_0, '0', uhd_usrp_sink_0, '0']
-- [network_tcp_source_0, '0', blocks_stream_to_tagged_stream_0, '0']
-- [pdu_tagged_stream_to_pdu_0, pdus, lora_tx_0, in]
+- [pdu_pdu_lambda_0, pdu, blocks_message_debug_0, print]
+- [pdu_pdu_lambda_0, pdu, lora_tx_0, in]
+- [pdu_tagged_stream_to_pdu_0, pdus, satellites_pdu_head_tail_0, in]
+- [satellites_pdu_head_tail_0, out, satellites_pdu_head_tail_1, in]
+- [satellites_pdu_head_tail_1, out, pdu_pdu_lambda_0, pdu]
 - [uhd_usrp_source_0, '0', lora_rx_0, '0']
 
 metadata:
