@@ -13,5 +13,7 @@ ENV LD_LIBRARY_PATH=/usr/lib64:$LD_LIBRARY_PATH
 
 # generate python file
 WORKDIR /basestation
-COPY basestation.grc .
+COPY ./* .
 RUN grcc basestation.grc
+
+CMD ["python", "./basestation.py"]
