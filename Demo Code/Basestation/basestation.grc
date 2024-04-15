@@ -33,6 +33,18 @@ options:
     state: enabled
 
 blocks:
+- name: ack_len
+  id: variable
+  parameters:
+    comment: ''
+    value: '3'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [672, 12.0]
+    rotation: 0
+    state: enabled
 - name: bandwidth
   id: variable
   parameters:
@@ -42,7 +54,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [368, 16.0]
+    coordinate: [360, 12.0]
     rotation: 0
     state: enabled
 - name: data_port
@@ -54,7 +66,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [600, 16.0]
+    coordinate: [464, 12.0]
     rotation: 0
     state: enabled
 - name: freq
@@ -66,19 +78,19 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [272, 16.0]
+    coordinate: [272, 12.0]
     rotation: 0
     state: enabled
-- name: listen_address
+- name: packet_len
   id: variable
   parameters:
     comment: ''
-    value: '''::'''
+    value: '16'
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [480, 16.0]
+    coordinate: [568, 12.0]
     rotation: 0
     state: enabled
 - name: samp_rate
@@ -90,41 +102,45 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [168, 16.0]
+    coordinate: [176, 12.0]
     rotation: 0
     state: enabled
-- name: blocks_message_debug_0
-  id: blocks_message_debug
+- name: epy_block_0
+  id: epy_block
   parameters:
+    _source_code: "\"\"\"\nEmbedded Python Blocks:\n\nEach time this file is saved,\
+      \ GRC will instantiate the first class it finds\nto get ports and parameters\
+      \ of your block. The arguments to __init__  will\nbe the parameters. All of\
+      \ them are required to have default values!\n\"\"\"\n\nimport numpy as np\n\
+      import pmt\nfrom gnuradio import gr\n\n\nclass blk(gr.basic_block):\n    \"\"\
+      \"Embedded Python Block example - a simple multiply const\"\"\"\n\n    def __init__(self,\
+      \ packet_len=16, ack_len=3):\n        \"\"\"arguments to this function show\
+      \ up as parameters in GRC\"\"\"\n        gr.basic_block.__init__(\n        \
+      \    self,\n            name='Generate ACK', \n            in_sig=[np.byte],\n\
+      \            out_sig=[np.byte]\n        )\n        self.packet_len = packet_len\n\
+      \        self.ack_len = ack_len\n        self.message_port_register_out(pmt.intern('ack_out'))\n\
+      \n    def general_work(self, input_items, output_items):\n        tagTuple =\
+      \ self.get_tags_in_window(0, 0, len(input_items[0]))\n        relativeOffsetList\
+      \ = []\n        for tag in tagTuple:\n            if (pmt.to_python(tag.key)\
+      \ == \"frame_info\" and pmt.to_python(tag.value)[\"pay_len\"] == self.packet_len):\n\
+      \                relativeOffsetList.append(tag.offset - self.nitems_read(0))\n\
+      \        relativeOffsetList.sort()\n\n        print(relativeOffsetList)\n\n\
+      \        return 0"
+    ack_len: ack_len
     affinity: ''
     alias: ''
     comment: ''
-    en_uvec: 'True'
-    log_level: info
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [1536, 32.0]
-    rotation: 0
-    state: enabled
-- name: blocks_stream_to_tagged_stream_0
-  id: blocks_stream_to_tagged_stream
-  parameters:
-    affinity: ''
-    alias: ''
-    comment: ''
-    len_tag_key: '"packet_len"'
     maxoutbuf: '0'
     minoutbuf: '0'
-    packet_len: '20'
-    type: byte
-    vlen: '1'
+    packet_len: packet_len
   states:
+    _io_cache: ('Generate ACK', 'blk', [('packet_len', '16'), ('ack_len', '3')], [('0',
+      'byte', 1)], [('0', 'byte', 1), ('ack_out', 'message', 1)], 'Embedded Python
+      Block example - a simple multiply const', ['ack_len', 'packet_len'])
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [560, 232.0]
+    coordinate: [600, 192.0]
     rotation: 0
     state: enabled
 - name: lora_rx_0
@@ -149,9 +165,9 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [312, 136.0]
+    coordinate: [344, 140.0]
     rotation: 0
-    state: true
+    state: enabled
 - name: lora_tx_0
   id: lora_tx
   parameters:
@@ -172,7 +188,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [1488, 192.0]
+    coordinate: [856, 212.0]
     rotation: 0
     state: enabled
 - name: network_tcp_sink_0
@@ -183,83 +199,14 @@ blocks:
     alias: ''
     comment: ''
     mode: '2'
-    port: '8080'
+    port: data_port
     type: byte
     vlen: '1'
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [560, 144.0]
-    rotation: 0
-    state: enabled
-- name: pdu_pdu_lambda_0
-  id: pdu_pdu_lambda
-  parameters:
-    affinity: ''
-    alias: ''
-    comment: ''
-    fn: ' lambda x: pmt.intern(str("").join([chr(x) for x in (pmt.u8vector_elements(pmt.cdr(x)))]))'
-    key: pmt.intern("key")
-    maxoutbuf: '0'
-    metadict: Raw Message
-    minoutbuf: '0'
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [1272, 240.0]
-    rotation: 0
-    state: enabled
-- name: pdu_tagged_stream_to_pdu_0
-  id: pdu_tagged_stream_to_pdu
-  parameters:
-    affinity: ''
-    alias: ''
-    comment: ''
-    maxoutbuf: '0'
-    minoutbuf: '0'
-    tag: packet_len
-    type: byte
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [760, 240.0]
-    rotation: 0
-    state: enabled
-- name: satellites_pdu_head_tail_0
-  id: satellites_pdu_head_tail
-  parameters:
-    affinity: ''
-    alias: ''
-    comment: ''
-    maxoutbuf: '0'
-    minoutbuf: '0'
-    mode: '3'
-    num: '4'
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [968, 232.0]
-    rotation: 0
-    state: enabled
-- name: satellites_pdu_head_tail_1
-  id: satellites_pdu_head_tail
-  parameters:
-    affinity: ''
-    alias: ''
-    comment: ''
-    maxoutbuf: '0'
-    minoutbuf: '0'
-    mode: '0'
-    num: '3'
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [1112, 232.0]
+    coordinate: [856, 124.0]
     rotation: 0
     state: enabled
 - name: uhd_usrp_sink_0
@@ -299,7 +246,7 @@ blocks:
     ant7: '"TX/RX"'
     ant8: '"TX/RX"'
     ant9: '"TX/RX"'
-    bw0: bandwidth
+    bw0: '0'
     bw1: '0'
     bw10: '0'
     bw11: '0'
@@ -439,7 +386,7 @@ blocks:
     gain_type7: default
     gain_type8: default
     gain_type9: default
-    len_tag_name: '""'
+    len_tag_name: '"frame_len"'
     lo_export0: 'False'
     lo_export1: 'False'
     lo_export10: 'False'
@@ -536,7 +483,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [1728, 184.0]
+    coordinate: [1128, 204.0]
     rotation: 0
     state: enabled
 - name: uhd_usrp_source_0
@@ -544,7 +491,7 @@ blocks:
   parameters:
     affinity: ''
     alias: ''
-    ant0: '"RX2"'
+    ant0: '"TX/RX"'
     ant1: '"RX2"'
     ant10: '"RX2"'
     ant11: '"RX2"'
@@ -913,7 +860,7 @@ blocks:
     nchan: '1'
     num_mboards: '1'
     otw: ''
-    rx_agc0: Default
+    rx_agc0: Enabled
     rx_agc1: Default
     rx_agc10: Default
     rx_agc11: Default
@@ -972,20 +919,15 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [64, 160.0]
+    coordinate: [64, 172.0]
     rotation: 0
     state: true
 
 connections:
-- [blocks_stream_to_tagged_stream_0, '0', pdu_tagged_stream_to_pdu_0, '0']
-- [lora_rx_0, '0', blocks_stream_to_tagged_stream_0, '0']
-- [lora_rx_0, '0', network_tcp_sink_0, '0']
+- [epy_block_0, '0', network_tcp_sink_0, '0']
+- [epy_block_0, ack_out, lora_tx_0, in]
+- [lora_rx_0, '0', epy_block_0, '0']
 - [lora_tx_0, '0', uhd_usrp_sink_0, '0']
-- [pdu_pdu_lambda_0, pdu, blocks_message_debug_0, print]
-- [pdu_pdu_lambda_0, pdu, lora_tx_0, in]
-- [pdu_tagged_stream_to_pdu_0, pdus, satellites_pdu_head_tail_0, in]
-- [satellites_pdu_head_tail_0, out, satellites_pdu_head_tail_1, in]
-- [satellites_pdu_head_tail_1, out, pdu_pdu_lambda_0, pdu]
 - [uhd_usrp_source_0, '0', lora_rx_0, '0']
 
 metadata:

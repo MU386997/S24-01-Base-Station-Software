@@ -16,7 +16,6 @@ import folium
 
 # The GUI is a client that connects to GNURadio
 GNURADIO_RECV_ADDR = ("localhost", 8080)
-GNURADIO_SEND_ADDR = ("localhost", 8081)
 BUFFER_SIZE = 2**12
 
 

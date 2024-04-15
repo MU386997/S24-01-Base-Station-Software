@@ -21,7 +21,6 @@ if __name__ == "__main__":
     while (True):
         try:
             received_data = serverSocket.recv(BUFFER_SIZE)
-            received_data = received_data[4:]
 
             radioID = int.from_bytes(received_data[0:2])
             panicState = int(received_data[2]) < 0
@@ -39,6 +38,8 @@ if __name__ == "__main__":
             print("Battery Life:", batteryLife)
             print("Timestamp:", utc)
         except:
-            print("Error Decoding")
+            print(f"Error decoding packet of length {len(received_data)}")
+            for byte in received_data:
+                print(byte)
         finally:
             print("\n")

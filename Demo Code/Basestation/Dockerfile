@@ -15,5 +15,3 @@ ENV LD_LIBRARY_PATH=/usr/lib64:$LD_LIBRARY_PATH
 WORKDIR /basestation
 COPY basestation.grc .
 RUN grcc basestation.grc
-
-#CMD python basestation.py
