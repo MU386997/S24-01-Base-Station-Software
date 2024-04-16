@@ -29,7 +29,7 @@
 #define GPS_TIME_ALLOWABLE_AGE 500  // how old (in ms) the GPS time is allowed to be when syncing with the system clock
 
 #define DEBUG_BAUD 9600
-#define GPS_BAUD 9600
+#define GPS_BAUD 38400 
 #define SERIAL_DEBUG true           // whether to display debugging info on the USB Serial
 #define DEBUG_START_DELAY_SEC 10    // starting delay to allow the USB Serial to be connected before running (a low number may miss some information)
 
@@ -43,6 +43,7 @@ TinyGPSPlus gps;
 uint8_t message[PACKET_SIZE_BYTES];
 int8_t messageID = 0;
 bool panicState = false;
+bool activeState = false;
 
 void setup() 
 {
@@ -92,6 +93,7 @@ void setup()
   }
   serialLogInteger("Setting TX power to", RF95_TX_POWER, "dBm...");
   rf95.setTxPower(RF95_TX_POWER, false);
+  rf95.sleep();
 
   serialLog("RF95 initialized.");
 
@@ -100,29 +102,35 @@ void setup()
   randomSeed(noise);
   serialLogInteger("Setting random seed with noise:", noise);
 
-  digitalWrite(POWER_LED_PIN, HIGH);
   serialLog("Setup Complete\n");
 }
 
 void loop()
 {
-  bool standbyMode = !digitalRead(STANDBY_BUTTON_PIN);
-  if (false)//todo standbyMode)
+  if (gps.location.isValid())
   {
-    // standby mode
-    rf95.sleep();
-    panicState = false;
+    digitalWrite(POWER_LED_PIN, HIGH);
+    if (activeState)
+    {
+      // activeMode
+      activeMode();
+      // noisy wait
+      uint16_t waitTime =  random(SLEEP_TIME - SLEEP_TIME_VARIANCE, SLEEP_TIME + SLEEP_TIME_VARIANCE);
+      serialLogInteger("Waiting for", waitTime, "ms\n");
+      smartDelay(waitTime);
+    }
+    else
+    {
+      // standby mode
+      rf95.sleep();
+      serialLog("Standing by...");
+      smartDelay(1000);
+    }
   }
   else
   {
-    // activeMode
-    activeMode();
+    waitingForLock();
   }
-
-  // noisy wait
-  uint16_t waitTime =  random(SLEEP_TIME - SLEEP_TIME_VARIANCE, SLEEP_TIME + SLEEP_TIME_VARIANCE);
-  serialLogInteger("Waiting for", waitTime, "ms\n");
-  smartDelay(waitTime);
 }
 
 // delay funciton that reads from GPS serial while waiting. Also exited by panic state
@@ -131,22 +139,38 @@ static void smartDelay(uint16_t ms)
   unsigned long start = millis();
   while ((millis() - start) < ms)
   {
+    // panic state
     bool newPanicState = digitalRead(PANIC_BUTTON_PIN);
     if (!panicState && newPanicState)
     {
-      activeMode();
       panicState = true;
+      digitalWrite(PANIC_LED_PIN, HIGH);
+      activeMode();
     }
     else if (panicState && !newPanicState)
     {
       panicState = false;
+      digitalWrite(PANIC_LED_PIN, LOW);
     }
 
+    // toggle active state LED
+    activeState = digitalRead(STANDBY_BUTTON_PIN);
+    digitalWrite(STANDBY_LED_PIN, activeState ? HIGH : LOW);
+
+    //get data from GPS
     if (Serial1.available())
     {
       gps.encode(Serial1.read());
     }
   }
+}
+
+void waitingForLock()
+{
+  digitalWrite(POWER_LED_PIN, HIGH);
+  smartDelay(500);
+  digitalWrite(POWER_LED_PIN, LOW);
+  smartDelay(500);
 }
 
 void activeMode()
