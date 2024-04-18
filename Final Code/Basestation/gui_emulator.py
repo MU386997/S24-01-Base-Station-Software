@@ -13,6 +13,10 @@ PORT = 8080
 ## main
 if __name__ == "__main__":
     # connect
+    print(f"Connecting to {HOST}:{PORT+1} ...")
+    ackSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    ackSocket.connect((HOST, PORT+1))
+    time.sleep(1)
     print(f"Connecting to {HOST}:{PORT} ...")
     serverSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     serverSocket.connect((HOST, PORT))               
@@ -21,6 +25,7 @@ if __name__ == "__main__":
     while (True):
         try:
             received_data = serverSocket.recv(BUFFER_SIZE)
+            received_data = received_data[4:]
 
             radioID = int.from_bytes(received_data[0:2])
             panicState = int(received_data[2]) < 0
@@ -30,6 +35,8 @@ if __name__ == "__main__":
             batteryLife = int(received_data[11])
             utc = int.from_bytes(received_data[12:16], signed=False)
 
+            ackSocket.send(received_data[0:3])
+
             print("Radio ID:", radioID)
             print("Panic State:", panicState)
             print("Message ID:", messageID)
@@ -38,8 +45,6 @@ if __name__ == "__main__":
             print("Battery Life:", batteryLife)
             print("Timestamp:", utc)
         except:
-            print(f"Error decoding packet of length {len(received_data)}")
-            for byte in received_data:
-                print(byte)
+            print("Error Decoding")
         finally:
             print("\n")

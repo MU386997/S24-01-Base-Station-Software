@@ -28,21 +28,21 @@ options:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [8, 8]
+    coordinate: [8, 12.0]
     rotation: 0
     state: enabled
 
 blocks:
-- name: ack_len
+- name: ack_port
   id: variable
   parameters:
     comment: ''
-    value: '3'
+    value: '8081'
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [672, 12.0]
+    coordinate: [664, 20.0]
     rotation: 0
     state: enabled
 - name: bandwidth
@@ -54,7 +54,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [360, 12.0]
+    coordinate: [352, 20.0]
     rotation: 0
     state: enabled
 - name: data_port
@@ -66,7 +66,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [464, 12.0]
+    coordinate: [568, 20.0]
     rotation: 0
     state: enabled
 - name: freq
@@ -78,19 +78,19 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [272, 12.0]
+    coordinate: [264, 20.0]
     rotation: 0
     state: enabled
-- name: packet_len
+- name: listen_address
   id: variable
   parameters:
     comment: ''
-    value: '16'
+    value: '''::'''
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [568, 12.0]
+    coordinate: [448, 20.0]
     rotation: 0
     state: enabled
 - name: samp_rate
@@ -102,45 +102,26 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [176, 12.0]
+    coordinate: [168, 20.0]
     rotation: 0
     state: enabled
-- name: epy_block_0
-  id: epy_block
+- name: blocks_stream_to_tagged_stream_0
+  id: blocks_stream_to_tagged_stream
   parameters:
-    _source_code: "\"\"\"\nEmbedded Python Blocks:\n\nEach time this file is saved,\
-      \ GRC will instantiate the first class it finds\nto get ports and parameters\
-      \ of your block. The arguments to __init__  will\nbe the parameters. All of\
-      \ them are required to have default values!\n\"\"\"\n\nimport numpy as np\n\
-      import pmt\nfrom gnuradio import gr\n\n\nclass blk(gr.basic_block):\n    \"\"\
-      \"Embedded Python Block example - a simple multiply const\"\"\"\n\n    def __init__(self,\
-      \ packet_len=16, ack_len=3):\n        \"\"\"arguments to this function show\
-      \ up as parameters in GRC\"\"\"\n        gr.basic_block.__init__(\n        \
-      \    self,\n            name='Generate ACK', \n            in_sig=[np.byte],\n\
-      \            out_sig=[np.byte]\n        )\n        self.packet_len = packet_len\n\
-      \        self.ack_len = ack_len\n        self.message_port_register_out(pmt.intern('ack_out'))\n\
-      \n    def general_work(self, input_items, output_items):\n        tagTuple =\
-      \ self.get_tags_in_window(0, 0, len(input_items[0]))\n        relativeOffsetList\
-      \ = []\n        for tag in tagTuple:\n            if (pmt.to_python(tag.key)\
-      \ == \"frame_info\" and pmt.to_python(tag.value)[\"pay_len\"] == self.packet_len):\n\
-      \                relativeOffsetList.append(tag.offset - self.nitems_read(0))\n\
-      \        relativeOffsetList.sort()\n\n        print(relativeOffsetList)\n\n\
-      \        return 0"
-    ack_len: ack_len
     affinity: ''
     alias: ''
     comment: ''
+    len_tag_key: '"packet_len"'
     maxoutbuf: '0'
     minoutbuf: '0'
-    packet_len: packet_len
+    packet_len: '3'
+    type: byte
+    vlen: '1'
   states:
-    _io_cache: ('Generate ACK', 'blk', [('packet_len', '16'), ('ack_len', '3')], [('0',
-      'byte', 1)], [('0', 'byte', 1), ('ack_out', 'message', 1)], 'Embedded Python
-      Block example - a simple multiply const', ['ack_len', 'packet_len'])
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [600, 192.0]
+    coordinate: [208, 340.0]
     rotation: 0
     state: enabled
 - name: lora_rx_0
@@ -165,9 +146,9 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [344, 140.0]
+    coordinate: [312, 136.0]
     rotation: 0
-    state: enabled
+    state: true
 - name: lora_tx_0
   id: lora_tx
   parameters:
@@ -188,7 +169,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [856, 212.0]
+    coordinate: [648, 300.0]
     rotation: 0
     state: enabled
 - name: network_tcp_sink_0
@@ -199,14 +180,51 @@ blocks:
     alias: ''
     comment: ''
     mode: '2'
-    port: data_port
+    port: '8080'
     type: byte
     vlen: '1'
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [856, 124.0]
+    coordinate: [544, 192.0]
+    rotation: 0
+    state: enabled
+- name: network_tcp_source_0
+  id: network_tcp_source
+  parameters:
+    addr: listen_address
+    affinity: ''
+    alias: ''
+    comment: ''
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    port: ack_port
+    server: 'True'
+    type: byte
+    vlen: '1'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [64, 332.0]
+    rotation: 0
+    state: enabled
+- name: pdu_tagged_stream_to_pdu_0
+  id: pdu_tagged_stream_to_pdu
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    tag: packet_len
+    type: byte
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [424, 348.0]
     rotation: 0
     state: enabled
 - name: uhd_usrp_sink_0
@@ -483,7 +501,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [1128, 204.0]
+    coordinate: [912, 292.0]
     rotation: 0
     state: enabled
 - name: uhd_usrp_source_0
@@ -860,7 +878,7 @@ blocks:
     nchan: '1'
     num_mboards: '1'
     otw: ''
-    rx_agc0: Enabled
+    rx_agc0: Default
     rx_agc1: Default
     rx_agc10: Default
     rx_agc11: Default
@@ -919,15 +937,16 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [64, 172.0]
+    coordinate: [64, 160.0]
     rotation: 0
     state: true
 
 connections:
-- [epy_block_0, '0', network_tcp_sink_0, '0']
-- [epy_block_0, ack_out, lora_tx_0, in]
-- [lora_rx_0, '0', epy_block_0, '0']
+- [blocks_stream_to_tagged_stream_0, '0', pdu_tagged_stream_to_pdu_0, '0']
+- [lora_rx_0, '0', network_tcp_sink_0, '0']
 - [lora_tx_0, '0', uhd_usrp_sink_0, '0']
+- [network_tcp_source_0, '0', blocks_stream_to_tagged_stream_0, '0']
+- [pdu_tagged_stream_to_pdu_0, pdus, lora_tx_0, in]
 - [uhd_usrp_source_0, '0', lora_rx_0, '0']
 
 metadata:
