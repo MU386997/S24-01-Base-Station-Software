@@ -141,10 +141,9 @@ void activeMode()
 {
   // read battery life
   long batteryReading = analogRead(VBAT_PIN);
-  batteryReading = map(batteryReading, BATTERY_MIN_THRESHOLD, BATTERY_MAX_THRESHOLD, 0, 100); // map to uint8_t
-  batteryReading = max(batteryReading, 0); // trim negative overflow 
-  batteryReading = min(batteryReading, 100); // trim positive overflow
-  uint8_t batteryPercent = batteryReading; //cast
+  uint8_t batteryPercent = map(batteryReading, BATTERY_MIN_THRESHOLD, BATTERY_MAX_THRESHOLD, 0, 100); // map to uint8_t
+  batteryPercent = max(batteryReading, 0); // trim negative overflow 
+  batteryPercent = min(batteryReading, 100); // trim positive overflow
 
   // read gps data from Serial1
   float gpsLat = 0;
