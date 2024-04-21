@@ -21,7 +21,7 @@
 // constants
 #define RF95_FREQ 915.0
 #define RF95_TX_POWER 1
-#define RADIO_ID 1
+#define RADIO_ID 2
 #define PACKET_SIZE_BYTES 16
 
 #define SLEEP_TIME 10000            // time between transmissions
@@ -29,12 +29,12 @@
 #define GPS_TIME_ALLOWABLE_AGE 500  // how old (in ms) the GPS time is allowed to be when syncing with the system clock
 
 #define DEBUG_BAUD 9600
-#define GPS_BAUD 9600 
+#define GPS_BAUD 38400 
 #define SERIAL_DEBUG true           // whether to display debugging info on the USB Serial
 #define DEBUG_START_DELAY_SEC 10    // starting delay to allow the USB Serial to be connected before running (a low number may miss some information)
 
-#define BATTERY_MIN_THRESHOLD 496   // calculated from 3.2 volts according to https://learn.adafruit.com/adafruit-feather-m0-adalogger/power-management
-#define BATTERY_MAX_THRESHOLD 652   // calculated from 4.2 volts according to https://learn.adafruit.com/adafruit-feather-m0-adalogger/power-management
+#define BATTERY_MIN_THRESHOLD 134   // calculated from 3.2 volts according to https://learn.adafruit.com/adafruit-feather-m0-adalogger/power-management
+#define BATTERY_MAX_THRESHOLD 511   // calculated from 4.2 volts according to https://learn.adafruit.com/adafruit-feather-m0-adalogger/power-management
 
 
 // Singletons
@@ -177,10 +177,9 @@ void activeMode()
 {
   // read battery life
   long batteryReading = analogRead(VBAT_PIN);
-  batteryReading = map(batteryReading, BATTERY_MIN_THRESHOLD, BATTERY_MAX_THRESHOLD, 0, 100); // map to uint8_t
-  batteryReading = max(batteryReading, 0); // trim negative overflow 
-  batteryReading = min(batteryReading, 100); // trim positive overflow
-  uint8_t batteryPercent = batteryReading; //cast
+  uint8_t batteryPercent = map(batteryReading, BATTERY_MIN_THRESHOLD, BATTERY_MAX_THRESHOLD, 0, 100); // map to uint8_t
+  batteryPercent = max(batteryReading, 0); // trim negative overflow 
+  batteryPercent = min(batteryReading, 100); // trim positive overflow
 
   // read gps data from Serial1
   float gpsLat = 0;

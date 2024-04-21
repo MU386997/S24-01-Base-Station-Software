@@ -126,7 +126,7 @@ class MapManager(QtCore.QObject):
 
     def decode(self, received_data: bytes):
         """
-        Decodes the data packet coming from GNURadio
+        Decodes the data packet coming from  
 
         Packet Structure:
          0                   1                   2                   3
@@ -163,8 +163,8 @@ class MapManager(QtCore.QObject):
         message_id = message_byte & 0b1111111
         # Panic state is determined by the first bit of the message id which also determines the sign
         panic_state = message_byte < 0
-        # Byte 12 is battery life from 0 to 255
-        battery_life = received_data[11] * 100 / 255
+        # Byte 12 is battery life from 0 to 100
+        battery_life = received_data[11]
         # Convert unix time to UTC string
         utc_time = datetime.fromtimestamp(unix_time, UTC).strftime("%m-%d-%Y %H:%M:%S")
 
