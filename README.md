@@ -4,7 +4,7 @@ S24-01 Software
 This repository contains the Personal Locator Beacon (PLB), Range Extender, and Base Station code for the Major Design Experience Project.
 
 ### Demo Code
-The demo code was used at the expo to demonstrate the project. The Base Station *does not* send acknowledgements to show the double packets being received from the Range Extender and PLB.
+The demo code was used at the expo to demonstrate the project. The Base Station **does not** send acknowledgements to show the double packets being received from the Range Extender and PLB.
 
 ### Final Code
 The final code is handed off to the customer. 
@@ -12,15 +12,16 @@ The final code is handed off to the customer.
 PLB
 ---
 ### Operation
-The power switch is located on the bottom.
-A flashing Red LED indicates there was an error when intiializing the PLB.
-A flashing Green LED indicates the PLB is looking for a GPS lock.
-A solid Green LED indicates the PLB is ready.
-A solid Yellow LED indicates the PLB is in active mode and is attempting to transmit every ~10 seconds (no transmission is sent if there is no GPS lock)
-A solid Red LED indicates the PLB is in the panic state. If the panic state is activated while the PLB is not in active mode, a single transmission is sent on the rising edge. 
+- The power switch is located on the bottom.
+- A flashing Red LED indicates there was an error when intiializing the PLB.
+- A flashing Green LED indicates the PLB is looking for a GPS lock.
+- A solid Green LED indicates the PLB is ready.
+- A solid Yellow LED indicates the PLB is in active mode and is attempting to transmit every ~10 seconds (no transmission is sent if there is no GPS lock)
+- A solid Red LED indicates the PLB is in the panic state. If the panic state is activated while the PLB is not in active mode, a single transmission is sent on the rising edge. 
 
 ### Packet Structure
 The PLB broadcasts the following packet in big endian encoding:
+```
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 |                               |P|             |               |
 |           Radio ID            |A|  Message ID |   GPS Lat     |
@@ -32,6 +33,7 @@ The PLB broadcasts the following packet in big endian encoding:
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 |                           Unix Time                           |
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+```
 
 Radio ID: an unsigned 16-bit integer unique to each PLB. Can be changed with the RADIO_ID constant
 Panic State: the sign bit of the Message ID. True if the panic switch is pressed. 
@@ -74,11 +76,13 @@ todo
 
 ### Packet Structure
 The basestation broadcasts the following packet in big endian encoding:
+```
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 |                               |P|             |
 |           Radio ID            |A|  Message ID |
 |                               |N|             |
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+```
 
 Radio ID: an unsigned 16-bit integer unique to each PLB. Can be changed with the RADIO_ID constant
 Panic State: the sign bit of the Message ID. True if the panic switch is pressed. 
