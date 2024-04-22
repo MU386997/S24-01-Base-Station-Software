@@ -1,5 +1,5 @@
 // includes
-#include <LoRa.h>
+#include <RH_RF95.h>
 #include <TinyGPS++.h>
 #include <TimeLib.h>
 
@@ -19,8 +19,7 @@
 
 
 // constants
-#define RF95_FREQ 915E6
-#define RF95_BANDWIDTH 125E3
+#define RF95_FREQ 915.0
 #define RF95_TX_POWER 1
 #define RADIO_ID 1
 #define PACKET_SIZE_BYTES 16
@@ -30,19 +29,21 @@
 #define GPS_TIME_ALLOWABLE_AGE 500  // how old (in ms) the GPS time is allowed to be when syncing with the system clock
 
 #define DEBUG_BAUD 9600
-#define GPS_BAUD 9600
+#define GPS_BAUD 9600 
 #define SERIAL_DEBUG true           // whether to display debugging info on the USB Serial
 #define DEBUG_START_DELAY_SEC 10    // starting delay to allow the USB Serial to be connected before running (a low number may miss some information)
 
-#define BATTERY_MIN_THRESHOLD 496   // calculated from 3.2 volts according to https://learn.adafruit.com/adafruit-feather-m0-adalogger/power-management
-#define BATTERY_MAX_THRESHOLD 652   // calculated from 4.2 volts according to https://learn.adafruit.com/adafruit-feather-m0-adalogger/power-management
+#define BATTERY_MIN_THRESHOLD 134   // calculated from 3.2 volts according to https://learn.adafruit.com/adafruit-feather-m0-adalogger/power-management
+#define BATTERY_MAX_THRESHOLD 511   // calculated from 4.2 volts according to https://learn.adafruit.com/adafruit-feather-m0-adalogger/power-management
 
 
 // Singletons
+RH_RF95 rf95(RFM95_CS, RFM95_INT);
 TinyGPSPlus gps;
 uint8_t message[PACKET_SIZE_BYTES];
 int8_t messageID = 0;
 bool panicState = false;
+bool activeState = false;
 
 void setup() 
 {
@@ -61,6 +62,7 @@ void setup()
   }
 
   // set pinmodes  
+  pinMode(RFM95_RST, OUTPUT);
   pinMode(VBAT_PIN, INPUT);
   pinMode(STANDBY_BUTTON_PIN, INPUT);
   pinMode(PANIC_BUTTON_PIN, INPUT);
@@ -69,17 +71,29 @@ void setup()
   pinMode(PANIC_LED_PIN, OUTPUT);
   pinMode(NOISE_SEED_PIN, INPUT);
 
+  // manually reset rf95
+  digitalWrite(RFM95_RST, LOW);
+  delay(10);
+  digitalWrite(RFM95_RST, HIGH);
+  delay(10);  
+
   // init rf95
   serialLog("Initializing RF95...");
-  LoRa.setPins(RFM95_CS, RFM95_RST, RFM95_INT);
-  LoRa.setSignalBandwidth(RF95_BANDWIDTH);
-  LoRa.setTxPower(RF95_TX_POWER);
-  LoRa.enableCrc();
-  if (!LoRa.begin(RF95_FREQ))
+  if (!rf95.init())
   {
     serialLog("Failed to initialize RF95");
     errorLoop();
   }
+
+  serialLogDouble("Setting frequency to", RF95_FREQ, "MHZ...");
+  if (!rf95.setFrequency(RF95_FREQ))
+  {
+    serialLog("Failed to set frequency");
+    errorLoop();
+  }
+  serialLogInteger("Setting TX power to", RF95_TX_POWER, "dBm...");
+  rf95.setTxPower(RF95_TX_POWER, false);
+  rf95.sleep();
 
   serialLog("RF95 initialized.");
 
@@ -88,29 +102,35 @@ void setup()
   randomSeed(noise);
   serialLogInteger("Setting random seed with noise:", noise);
 
-  digitalWrite(POWER_LED_PIN, HIGH);
   serialLog("Setup Complete\n");
 }
 
 void loop()
 {
-  bool standbyMode = digitalRead(STANDBY_BUTTON_PIN);
-  if (standbyMode)
+  if (gps.location.isValid())
   {
-    // standby mode
-    LoRa.sleep();
-    Serial.println("Standby...");
+    digitalWrite(POWER_LED_PIN, HIGH);
+    if (activeState)
+    {
+      // activeMode
+      activeMode();
+      // noisy wait
+      uint16_t waitTime =  random(SLEEP_TIME - SLEEP_TIME_VARIANCE, SLEEP_TIME + SLEEP_TIME_VARIANCE);
+      serialLogInteger("Waiting for", waitTime, "ms\n");
+      smartDelay(waitTime);
+    }
+    else
+    {
+      // standby mode
+      rf95.sleep();
+      serialLog("Standing by...");
+      smartDelay(1000);
+    }
   }
   else
   {
-    // activeMode
-    activeMode();
+    waitingForLock();
   }
-
-  // noisy wait
-  uint16_t waitTime =  random(SLEEP_TIME - SLEEP_TIME_VARIANCE, SLEEP_TIME + SLEEP_TIME_VARIANCE);
-  serialLogInteger("Waiting for", waitTime, "ms\n");
-  smartDelay(waitTime);
 }
 
 // delay funciton that reads from GPS serial while waiting. Also exited by panic state
@@ -119,22 +139,38 @@ static void smartDelay(uint16_t ms)
   unsigned long start = millis();
   while ((millis() - start) < ms)
   {
+    // panic state
     bool newPanicState = digitalRead(PANIC_BUTTON_PIN);
     if (!panicState && newPanicState)
     {
-      activeMode();
       panicState = true;
+      digitalWrite(PANIC_LED_PIN, HIGH);
+      activeMode();
     }
     else if (panicState && !newPanicState)
     {
       panicState = false;
+      digitalWrite(PANIC_LED_PIN, LOW);
     }
 
+    // toggle active state LED
+    activeState = digitalRead(STANDBY_BUTTON_PIN);
+    digitalWrite(STANDBY_LED_PIN, activeState ? HIGH : LOW);
+
+    //get data from GPS
     if (Serial1.available())
     {
       gps.encode(Serial1.read());
     }
   }
+}
+
+void waitingForLock()
+{
+  digitalWrite(POWER_LED_PIN, HIGH);
+  smartDelay(500);
+  digitalWrite(POWER_LED_PIN, LOW);
+  smartDelay(500);
 }
 
 void activeMode()
@@ -192,9 +228,7 @@ void activeMode()
 
     // send message
     encodeMessage(RADIO_ID, messageID, gpsLat, gpsLong, batteryPercent, utc);
-    LoRa.beginPacket();
-    LoRa.write(message, PACKET_SIZE_BYTES);
-    LoRa.endPacket();
+    rf95.send(message, PACKET_SIZE_BYTES);
     messageID = (messageID + 1) & 0b01111111; // increment without consuming most significant bit (reserved for panic state)
   }
 }
