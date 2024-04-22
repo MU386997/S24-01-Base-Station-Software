@@ -75,8 +75,8 @@ Simply plug in the SDR run both the GnuRadio program (Docker Recommended) and th
 
 ### Dependencies
 - Make sure the python GUI requirements in requirements.txt are satisifed
-- install GnuRadio from https://github.com/ryanvolz/radioconda/
-- install USRP Drivers from https://files.ettus.com/manual/page_install.html
+- (unecessary if using docker) install GnuRadio from https://github.com/ryanvolz/radioconda/
+- (unecessary if using docker) install USRP Drivers from https://files.ettus.com/manual/page_install.html
 - If on linux, make sure to add the appropriate UDEV rules to access the SDR over USB
 
 ### Docker Operation
