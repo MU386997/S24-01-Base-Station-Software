@@ -163,7 +163,7 @@ class MapManager(QtCore.QObject):
         radio_id, message_byte, latitude, longitude, unix_time = struct.unpack(
             "!HbffxI", received_data
         )
-        # Message id is the absolute value of the message id byte
+        # Message id is the first 7 bits of the message id byte
         message_id = message_byte & 0b1111111
         # Panic state is determined by the first bit of the message id which also determines the sign
         panic_state = message_byte < 0
