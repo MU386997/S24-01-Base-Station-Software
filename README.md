@@ -37,7 +37,7 @@ The PLB broadcasts the following packet in big endian encoding:
 
 - Radio ID: an unsigned 16-bit integer unique to each PLB. Can be changed with the RADIO_ID constant
 - Panic State: the sign bit of the Message ID. True if the panic switch is pressed. 
-- Message ID: a signed 8-bit integer that increments for each message. Rolls over to 0 after 127 to prevent overlow from affecting Panic State
+- Message ID: a signed 8-bit integer that increments for each message. Rolls over to 0 after 127 to prevent overflow from affecting Panic State
 - GPS Latitude: 32-bit float
 - GPS Longitude: 32-bit float
 - Battery Life: an unsigned 8-bit integer for the battery percent. Only values 0-100 are used but the packet must be a whole number of bytes
@@ -45,10 +45,10 @@ The PLB broadcasts the following packet in big endian encoding:
 
 ### Useful Constants
 - RF95_FREQ: the floating point frequency to use in MHz
-- RF95_TX_POWER: the power to use when transmitting in decibels. The PLB was kept a low power for testing to simulate a long range
+- RF95_TX_POWER: the power to use when transmitting in decibels. The PLB was kept at a low power for testing to simulate a long range
 - RADIO_ID: the unique ID for each PLB (Range Extenders do not have an ID)
 - SLEEP_TIME: the time in milliseconds between transmissions in active mode
-- SLEEP_TIME_VARIANCE: the maximum time in milliseconds added to or subtracted from the sleep time to decrease the likelyhood of a transmission collision
+- SLEEP_TIME_VARIANCE: the maximum time in milliseconds added to or subtracted from the sleep time to decrease the likelihood of a transmission collision
 - GPS_TIME_ALLOWABLE_AGE: how old in milliseconds the GPS timestamp is allowed to be for it to be considered valid
 - DEBUG_BAUD: the baud rate of the USB serial port used for debugging
 - GPS_BAUD: the baud rate of the GPS module (note some of our modules use 38400 baud)
@@ -60,7 +60,7 @@ The PLB broadcasts the following packet in big endian encoding:
 Range Extender
 --------------
 ### Operation
-The Range Extender operates as a relay for packets. It keeps an array of all messages received from PLBs and retransmits them after one second. Any acknoweledgement is used to search the array and remove any messaged matching the Radio ID and Message ID, thus preventing the retransmission.
+The Range Extender operates as a relay for packets. It keeps an array of all messages received from PLBs and retransmits them after one second. Any acknoweledgement is used to search the array and remove any messages matching the Radio ID and Message ID, thus preventing the retransmission.
 
 ### Useful Constants
 - RF95_FREQ: the floating point frequency to use in MHz
@@ -81,8 +81,8 @@ Simply plug in the SDR run both the GnuRadio program (Docker Recommended) and th
 
 ### Docker Operation
 Build and run the Docker image
-`docker build -t basestation {path do dockerfile}`
-`docker run -it --priveleged --network=host basetation`
+`docker build -t basestation {path to dockerfile}`
+`docker run -it --privileged --network=host basestation`
 
 ### GnuRadio Operation
 1. Open GnuRadio Companion
@@ -102,4 +102,4 @@ The basestation broadcasts the following packet in big endian encoding:
 
 - Radio ID: an unsigned 16-bit integer unique to each PLB. Can be changed with the RADIO_ID constant
 - Panic State: the sign bit of the Message ID. True if the panic switch is pressed. 
-- Message ID: a signed 8-bit integer that increments for each message. Rolls over to 0 after 127 to prevent overlow from affecting Panic State
+- Message ID: a signed 8-bit integer that increments for each message. Rolls over to 0 after 127 to prevent overflow from affecting Panic State
