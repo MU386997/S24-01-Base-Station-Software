@@ -3,6 +3,12 @@ S24-01 Software
 
 This repository contains the Personal Locator Beacon (PLB), Range Extender, and Base Station code for the Major Design Experience Project.
 
+### Quick Notes:
+- The GPS modules can be configured via the serial connection. You should probably make sure they are all configured the same before use. Their baud rate can also be changed, so if you are receiving jibberish try a different baud.
+- Make sure the battery polarity matches the expected polarity of the arduino feather. You will fry the charging ciruit if it is incorrect.
+- The prototype PLB and Range Extender were build on a breadboard. Their charging ports have been fried and cannot use a battery. They still function over USB power.
+- This project shoudl consider using LoRaWAN to implement a mesh network.
+
 ### Demo Code
 The demo code was used at the expo to demonstrate the project. The Base Station **does not** send acknowledgements to show the double packets being received from the Range Extender and PLB.
 
